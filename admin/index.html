@@ -7,11 +7,11 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="GM 재고">
+<meta name="apple-mobile-web-app-title" content="GM 관리자">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/manifest-admin.json">
+<title>재고관리 (관리자)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<title>재고관리</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -78,7 +78,6 @@ body.light .items-wrap{background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0
 .item-card{border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
 body.dark .item-card{background:#0f1020;border:1px solid rgba(255,255,255,0.07)}
 body.light .item-card{background:#fff;border:1px solid rgba(0,0,0,0.08)}
-.item-body{flex:1}
 .item-card.low-stock{border-color:rgba(239,68,68,0.35)!important}
 .item-img{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden}
 body.dark .item-img{background:rgba(255,255,255,0.03)}
@@ -105,21 +104,15 @@ body.light .opts-panel{background:rgba(0,0,0,0.03)}
 body.dark .opt-name{color:#94a3b8}
 body.light .opt-name{color:#6b7280}
 .opt-qty{font-weight:800;font-size:13px;flex-shrink:0}
-.btn-cart{width:100%;padding:6px 0;border-radius:7px;font-size:11px;font-weight:700;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;margin-top:6px}
 .card-actions{padding:6px 8px;border-top:1px solid rgba(128,128,128,0.1)}
-.cart-item{border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px}
-body.dark .cart-item{background:#0f1020;border:1px solid rgba(255,255,255,0.07)}
-body.light .cart-item{background:#fff;border:1px solid rgba(0,0,0,0.08)}
 .week-group{margin-bottom:20px}
 .week-header{display:flex;align-items:center;gap:8px;padding:10px 14px;font-weight:700;font-size:12px}
-body.dark .week-header{background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:10px 10px 0 0}
+body.dark .week-header{background:rgba(59,130,246,0.08);border:2px solid rgba(59,130,246,0.35);border-radius:10px 10px 0 0}
 body.light .week-header{background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.2);border-radius:10px 10px 0 0}
 .week-cycle{display:flex;gap:8px;flex-wrap:wrap;padding:7px 14px}
 body.dark .week-cycle{background:rgba(255,255,255,0.02);border-left:1px solid rgba(59,130,246,0.2);border-right:1px solid rgba(59,130,246,0.2)}
 body.light .week-cycle{background:rgba(0,0,0,0.02);border-left:1px solid rgba(59,130,246,0.2);border-right:1px solid rgba(59,130,246,0.2)}
-.order-list{overflow:hidden;border-radius:0 0 10px 10px}
-body.dark .order-list{border:1px solid rgba(59,130,246,0.2);border-top:none}
-body.light .order-list{border:1px solid rgba(59,130,246,0.2);border-top:none}
+.order-list{overflow:hidden;border-radius:0 0 10px 10px;border:2px solid rgba(59,130,246,0.35);border-top:none}
 .order-row{padding:12px 14px}
 .order-row+.order-row{border-top:1px solid rgba(128,128,128,0.08)}
 body.dark .order-row:nth-child(even){background:rgba(255,255,255,0.02)}
@@ -168,114 +161,69 @@ body.light #loading{background:#f5f5f7}
 <div id="loading"><div class="spinner"></div><div style="font-size:14px;color:#475569">연결 중...</div></div>
 <div id="toast"></div>
 
-<!-- 장바구니 담기 모달 -->
-<div class="modal-bg" id="cart-modal" style="display:none" onclick="if(event.target===this)closeModal('cart-modal')">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title" id="cart-modal-title">장바구니 담기</div>
-    <div id="cart-opt-wrap" style="margin-bottom:14px"></div>
-    <div class="field-wrap">
-      <div class="field-label" data-i18n="lbl_qty">수량</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-        <button onclick="adjQty(-1)" style="width:36px;height:36px;border-radius:99px;font-size:20px;font-weight:300;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;display:flex;align-items:center;justify-content:center">−</button>
-        <input type="number" id="cart-qty" min="1" value="1" class="field-input" style="width:72px;text-align:center;padding:8px;font-size:18px;font-weight:800">
-        <button onclick="adjQty(1)" style="width:36px;height:36px;border-radius:99px;font-size:20px;font-weight:300;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;display:flex;align-items:center;justify-content:center">＋</button>
-        <span id="cart-stock-label" style="font-size:11px;color:#475569"></span>
-      </div>
-    </div>
-    <button class="btn-primary" onclick="confirmAddToCart()">🛒 <span data-i18n="btn_add">장바구니에 담기</span></button>
-    <button class="btn-secondary-sm" onclick="closeModal('cart-modal')" data-i18n="btn_cancel">취소</button>
-  </div>
-</div>
-
-<!-- 발주 확인 모달 -->
-<div class="modal-bg" id="checkout-modal" style="display:none" onclick="if(event.target===this)closeModal('checkout-modal')">
-  <div class="modal-sheet" style="max-height:90dvh;overflow-y:auto">
-    <div class="modal-handle"></div>
-    <div class="modal-title">📦 <span data-i18n="order_confirm">발주 요청서 확인</span></div>
-    <div id="checkout-list" style="border-radius:12px;padding:12px 14px;margin-bottom:14px" class="stat-tile"></div>
-    <div class="field-wrap">
-      <div class="field-label"><span data-i18n="lbl_store">매장명</span> *</div>
-      <input class="field-input" id="store-name" data-i18n-ph="lbl_store" placeholder="매장명" autocomplete="off">
-    </div>
-    <div class="field-wrap">
-      <div class="field-label"><span data-i18n="lbl_reqtype">요청 유형</span> *</div>
-      <div style="display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-        <label id="type-label-파손" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:all .15s">
-          <input type="radio" name="order-type" value="파손" style="accent-color:#ef4444" onchange="onOrderTypeChange()"> 🔴 <span data-i18n="type_damaged">파손</span>
-        </label>
-        <label id="type-label-부족" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:all .15s">
-          <input type="radio" name="order-type" value="부족" style="accent-color:#fbbf24" onchange="onOrderTypeChange()"> 🟡 <span data-i18n="type_shortage">부족</span>
-        </label>
-        <label id="type-label-오픈" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:all .15s">
-          <input type="radio" name="order-type" value="오픈" style="accent-color:#34d399" onchange="onOrderTypeChange()"> 🟢 <span data-i18n="type_open">오픈</span>
-        </label>
-      </div>
-      <div id="type-notice" style="font-size:11px;color:#475569;margin-top:4px"></div>
-    </div>
-    <div class="field-wrap">
-      <div class="field-label"><span data-i18n="lbl_details">상세 사유</span> <span id="reason-required-mark">*</span> <span style="font-size:10px;color:#475569">(<span data-i18n="hint_specific">구체적으로</span>)</span></div>
-      <textarea class="field-input" id="order-reason" rows="2" data-i18n-ph="ph_reason" placeholder="예: 전시용 SET1 PLATE 낙하로 파손" style="resize:none;line-height:1.5"></textarea>
-    </div>
-    <div class="field-wrap" id="photo-wrap">
-      <div class="field-label"><span data-i18n="lbl_photo">파손 사진</span> <span id="photo-required-label" style="font-size:10px;color:#475569">(선택)</span></div>
-      <div id="photo-preview-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
-      <label style="display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:10px;cursor:pointer;font-size:13px;border:1.5px dashed rgba(255,255,255,0.15)">
-        <span>📷 <span data-i18n="btn_addphoto">사진 추가</span> <span style="font-size:10px;color:#475569">(<span data-i18n="max3">최대 3장</span>)</span></span>
-        <span id="photo-count-label" style="font-size:10px;color:#6366f1;margin-left:auto"></span>
-        <input type="file" id="order-photos" accept="image/*" multiple style="display:none" onchange="previewPhotos()">
-      </label>
-    </div>
-    <button class="btn-primary" onclick="confirmOrder()">🚀 <span data-i18n="btn_order">발주하기</span></button>
-    <button class="btn-secondary-sm" onclick="closeModal('checkout-modal')" data-i18n="btn_cancel">취소</button>
-  </div>
-</div>
-
 <!-- 헤더 -->
 <div id="app-header">
   <div style="display:flex;align-items:center;gap:10px">
     <div class="logo-box">📦</div>
     <div>
-      <div style="font-weight:800;font-size:14px" data-i18n="app_title">재고관리</div>
+      <div style="font-weight:800;font-size:14px">재고관리 <span style="font-size:10px;color:#6366f1;font-weight:600">관리자</span></div>
       <div class="stat-lbl" id="header-sub">연결 중...</div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div style="position:relative">
-      <button onclick="toggleLangMenu()" title="Language"
-        style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:inherit;
-               background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:inherit;cursor:pointer;white-space:nowrap">
-        🌐 <span id="lang-label">한국어</span>
-      </button>
-      <div id="lang-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:132px;z-index:200;
-           background:#1e2235;border:1px solid rgba(255,255,255,0.14);border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.45)">
-        <div onclick="setLang('ko')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">한국어</div>
-        <div onclick="setLang('ja')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">日本語</div>
-        <div onclick="setLang('en')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">English</div>
-        <div onclick="setLang('zh-CN')" class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">简体中文</div>
-        <div onclick="setLang('zh-TW')" class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">繁體中文</div>
-      </div>
-    </div>
-    <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">🌙</div></button>
-  </div>
+  <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">🌙</div></button>
 </div>
 
 <div id="app-body">
   <div id="tab-stock" class="tab-pane active"><div class="page-scroll">
     <div class="stat-row" id="stock-stats"></div>
-    <div class="filter-label" data-i18n="lbl_year">연도</div><div class="filter-row" id="yr-filters"></div>
-    <div class="filter-label" data-i18n="lbl_collection">컬렉션</div><div class="filter-row" id="cl-filters"></div>
+    <div class="filter-label">연도</div><div class="filter-row" id="yr-filters"></div>
+    <div class="filter-label">컬렉션</div><div class="filter-row" id="cl-filters"></div>
     <div id="stock-groups"></div>
     <div style="height:80px"></div>
-  </div></div>
+  </div>
+  <!-- 상품 추가 FAB -->
+  <button onclick="window.openAddItemModal()" style="position:fixed;bottom:calc(60px + 16px);right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;z-index:90" id="add-item-fab">＋</button>
+  </div>
 
-  <div id="tab-cart" class="tab-pane"><div class="page-scroll" id="cart-page">
+  <div id="tab-batch" class="tab-pane"><div class="page-scroll">
+    <div style="text-align:center;padding:26px 8px 18px">
+      <div style="font-size:44px;margin-bottom:12px">📂</div>
+      <div style="font-size:17px;font-weight:800;margin-bottom:7px">여러 매장 일괄 발주</div>
+      <div style="font-size:13px;color:#64748b;line-height:1.65">
+        매장별로 시트를 나눈 엑셀 한 파일로<br>여러 매장을 한 번에 발주합니다
+      </div>
+    </div>
+
+    <label class="btn-primary" style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-sizing:border-box">
+      📂 엑셀 파일 선택
+      <input type="file" accept=".xlsx,.xls" style="display:none" onchange="window.handleBatchOrderExcel(this)">
+    </label>
+
+    <div style="margin-top:20px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.85;
+                background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);color:#94a3b8">
+      <div style="font-weight:700;color:#a5b4fc;margin-bottom:8px;font-size:12.5px">엑셀 만드는 법</div>
+      · 매장마다 <b style="color:#cbd5e1">시트를 하나씩</b> 만들어 주세요<br>
+      · <b style="color:#cbd5e1">시트 탭 이름이 곧 매장명</b>이 됩니다 (예: TOKYO GINZA _ JP)<br>
+      · 발주 양식과 같은 형태면 됩니다. 열 순서는 상관없고 머리글 이름으로 찾습니다<br>
+      · 수량이 비었거나 0이면 그 줄은 빠집니다<br>
+      · <span style="color:#64748b">합계 수량 · 총 재고</span> 줄은 자동으로 무시합니다<br>
+      · 형식이 안 맞는 시트는 건너뛰고 알려드립니다
+    </div>
+
+    <div style="margin-top:10px;border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.85;
+                background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);color:#94a3b8">
+      <div style="font-weight:700;color:#fbbf24;margin-bottom:8px;font-size:12.5px">확인해 주세요</div>
+      · 상품명이 재고와 <b style="color:#cbd5e1">글자까지 같아야</b> 매칭됩니다<br>
+      · 전 매장 합계가 재고를 넘으면 올린 뒤 화면에서 알려드립니다<br>
+      · 발주하면 재고가 바로 차감됩니다
+    </div>
+
     <div style="height:80px"></div>
   </div></div>
 
   <div id="tab-orders" class="tab-pane"><div class="page-scroll">
     <div style="position:relative;margin-bottom:12px">
-      <input id="order-search" type="search" data-i18n-ph="search_ph" placeholder="🔍 매장명 · 상품명 검색" autocomplete="off"
+      <input id="order-search" type="search" placeholder="🔍 매장명 · 상품명 검색" autocomplete="off"
         style="width:100%;padding:11px 38px 11px 14px;border-radius:12px;font-size:14px;font-family:inherit;outline:none;
                background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:inherit;box-sizing:border-box">
       <button id="order-search-clear" type="button"
@@ -288,14 +236,14 @@ body.light #loading{background:#f5f5f7}
 </div>
 
 <div id="bottom-nav">
-  <button class="nav-btn active" id="nav-stock" onclick="switchTab('stock')"><span class="nav-icon">📦</span><span data-i18n="nav_stock">재고</span></button>
-  <button class="nav-btn" id="nav-cart" onclick="switchTab('cart')"><span class="nav-icon">🛒</span><span data-i18n="nav_cart">장바구니</span><div class="nav-badge" id="cart-badge" style="display:none">0</div></button>
-  <button class="nav-btn" id="nav-orders" onclick="switchTab('orders')"><span class="nav-icon">📋</span><span data-i18n="nav_orders">출고요청</span></button>
+  <button class="nav-btn active" id="nav-stock" onclick="switchTab('stock')"><span class="nav-icon">📦</span>재고</button>
+  <button class="nav-btn" id="nav-batch" onclick="switchTab('batch')"><span class="nav-icon">📂</span>일괄 발주</button>
+  <button class="nav-btn" id="nav-orders" onclick="switchTab('orders')"><span class="nav-icon">📋</span>출고요청</button>
 </div>
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getFirestore,collection,doc,setDoc,addDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const db=getFirestore(initializeApp({
   apiKey:"AIzaSyBHWNK9K1Ack5-Sj02PAuVbCu2gcOSnpMY",
@@ -306,148 +254,14 @@ const db=getFirestore(initializeApp({
   appId:"1:590013505498:web:59343cee0d152ee97c6ae3"
 }));
 
-// ══════════ 다국어 (i18n) ══════════
-const I18N={"ko":{"app_title":"재고관리","nav_stock":"재고","nav_cart":"장바구니","nav_orders":"출고요청","stat_items":"전체 상품","stat_qty":"총 수량","stat_low":"재고 부족","filter_all":"전체","unit_type":"종","unit_pcs":"개","unit_case":"건","soldout":"품절","no_restock":"재입고 예정 없음","loading":"데이터를 불러오는 중...","lbl_year":"연도","lbl_collection":"컬렉션","lbl_itemname":"상품명","lbl_option":"옵션","connecting":"연결 중...","cart_empty":"장바구니가 비어있어요","cart_empty_desc":"재고 탭에서 담기 버튼을 눌러주세요","cart_goto_stock":"재고 보러가기","cart_excel_open":"엑셀로 오픈 매장 발주하기","cart_items":"담은 상품","cart_clear":"장바구니 비우기","btn_order":"발주하기","btn_add":"담기","btn_remove":"제거","btn_cancel":"취소","btn_edit":"수정","btn_save":"수정하기","opt_select":"옵션 선택","opt_required":"⚠️ 옵션을 선택해주세요","opt_selected":"✓ 선택:","lbl_qty":"수량","lbl_newqty":"새 수량","order_confirm":"발주 요청서 확인","lbl_store":"매장명","lbl_reqtype":"요청 유형","type_damaged":"파손","type_shortage":"부족","type_open":"오픈","note_photo_req":"⚠️ 파손 사진 첨부 필수","note_photo_opt":"사진 첨부 없이 요청 가능해요","note_open":"신규 오픈 매장 발주예요. 사진 첨부 불필요해요.","lbl_details":"상세 사유","hint_specific":"구체적으로","ph_reason":"예: 전시용 SET1 PLATE 낙하로 파손","lbl_photo":"파손 사진","btn_addphoto":"사진 추가","max3":"최대 3장","n_selected":"장 선택됨","compressing":"압축 중...","req_required":"필수","req_optional":"선택","req_notneeded":"불필요","st_review":"검토중","st_approved":"승인됨","st_preparing":"준비중","st_ready":"출고대기","st_shipped":"출고완료","st_rejected":"반려","st_cancelled":"취소됨","rsn_request":"요청 사유","rsn_reject":"반려 사유","rsn_cancel":"취소 사유","no_orders":"출고 요청 내역이 없어요","photo_show":"사진 보기","photo_hide":"사진 접기","show_more":"개 더보기","show_less":"접기","bn_ship_this":"이번 주 주문은 {d}에 발송돼요","bn_edit_until":"{d}까지 주문·수정 가능해요","bn_week_ship":"이 주 주문은 {d}에 발송 예정이에요","bn_this_until":"이번 주({a}까지) 주문은 {d}에 발송돼요","bn_today_new":"오늘(월/화) 신규 주문은 {d} 발송","bn_weekend":"주말 주문은 다음 주(월~금) 주차로 집계돼요","bn_now_ship":"지금 주문은 {d}에 발송돼요","cyc_intake":"주문 접수","cyc_prep":"준비·택배접수","cyc_ship":"발송","monfri":"월~금","late_title":"⏰ 늦은 접수 안내","late_now":"지금은 금요일 오후 6시 이후 / 주말이에요","late_count":"이 주문은 다음 주 주차로 집계되어 {d}에 발송됩니다","late_hint":"2주 후 발송을 원하지 않으시면 다음 주 월~금에 다시 접수해 주세요","late_agree":"✅ 동의하고 발주하기","late_back":"← 장바구니로 돌아가기","xl_reading":"📂 엑셀 읽는 중...","xl_badformat":"엑셀 형식을 확인해주세요","xl_nocol":"상품명·수량 열을 찾을 수 없어요","xl_noqty":"수량이 입력된 품목이 없어요","xl_readerr":"엑셀 읽기 오류","xl_review":"📂 오픈 발주 검토","xl_avail":"✅ 발주 가능 {n}건","xl_low":"⚠️ 재고 부족 {n}건 — 제외 여부를 선택해주세요","xl_lowhint":"✅ 체크된 항목은 재고 수량만큼 발주돼요","xl_notfound":"❌ 찾을 수 없는 품목 {n}건 (자동 제외)","xl_stockreq":"재고 {s}개 / 요청 {r}개","xl_country":"국가 약자","xl_country_ph":"예: USA, KR, JP","xl_submit":"🚀 오픈 발주 요청","ms_added":"{name} {n}개 담았어요","ms_over_cur":"보유 재고보다 수량이 많습니다 (현재 재고: {n}개)","ms_over_add":"보유 재고보다 수량이 많습니다 (추가 가능: {n}개)","ms_need_store":"매장명을 입력해주세요","ms_need_cc":"국가 약자를 입력해주세요","ms_need_type":"요청 유형을 선택해주세요 (파손/부족)","ms_need_detail":"상세 사유를 입력해주세요","ms_need_open":"오픈 매장 정보를 입력해주세요","ms_need_photo":"파손 사진을 첨부해주세요 📷","ms_max3":"사진은 최대 3장까지 올릴 수 있어요","ms_bad_qty":"올바른 수량을 입력해주세요","ms_closed":"일요일 오후 9시 이후에는 수정할 수 없어요","ms_no_items":"발주할 품목이 없어요","ms_order_ok":"📋 발주 요청이 접수됐어요. 관리자 검토 후 출고돼요.","ms_open_ok":"🟢 오픈 발주 완료! {store} · {n}종","ms_qty_ok":"수량이 수정됐어요 ✅","ms_store_ok":"매장명이 수정됐어요 ✅","ms_save_err":"저장 오류","search_ph":"🔍 매장명 · 상품명 검색","search_result":"검색 결과 {n}건","search_none":"검색 결과가 없어요","o_ko":"한국어","o_zh_cn":"중국어 간체","o_zh_tw":"중국어 번체","o_ja":"일본어","o_en":"영어","xl_tocart":"장바구니에 담기","xl_tocart_hint":"장바구니에 담긴 뒤 수량을 조정하거나 다른 품목을 추가할 수 있어요. 최종 발주는 장바구니에서 진행해요.","xl_cart_ok":"🛒 {n}개 품목을 장바구니에 담았어요","xl_cart_capped":"{n}개는 재고 수량으로 조정","cart_form_dl":"발주 양식 다운받기","form_downloading":"📄 발주 양식 받는 중..."},"ja":{"app_title":"在庫管理","nav_stock":"在庫","nav_cart":"カート","nav_orders":"出庫リクエスト","stat_items":"全商品","stat_qty":"総数量","stat_low":"在庫不足","filter_all":"すべて","unit_type":"種","unit_pcs":"個","unit_case":"件","soldout":"品切れ","no_restock":"再入荷予定なし","loading":"データを読み込み中...","lbl_year":"年度","lbl_collection":"コレクション","lbl_itemname":"商品名","lbl_option":"オプション","connecting":"接続中...","cart_empty":"カートは空です","cart_empty_desc":"在庫タブで「追加」ボタンを押してください","cart_goto_stock":"在庫を見る","cart_excel_open":"Excelで新規オープン店舗発注","cart_items":"カート内商品","cart_clear":"カートを空にする","btn_order":"発注する","btn_add":"追加","btn_remove":"削除","btn_cancel":"キャンセル","btn_edit":"編集","btn_save":"変更する","opt_select":"オプション選択","opt_required":"⚠️ オプションを選択してください","opt_selected":"✓ 選択:","lbl_qty":"数量","lbl_newqty":"新しい数量","order_confirm":"発注リクエスト確認","lbl_store":"店舗名","lbl_reqtype":"リクエスト種別","type_damaged":"破損","type_shortage":"不足","type_open":"オープン","note_photo_req":"⚠️ 破損写真の添付が必須です","note_photo_opt":"写真なしでリクエストできます","note_open":"新規オープン店舗の発注です。写真は不要です。","lbl_details":"詳細理由","hint_specific":"具体的に","ph_reason":"例：展示用SET1 PLATEの落下により破損","lbl_photo":"破損写真","btn_addphoto":"写真を追加","max3":"最大3枚","n_selected":"枚選択済み","compressing":"圧縮中...","req_required":"必須","req_optional":"任意","req_notneeded":"不要","st_review":"確認中","st_approved":"承認済み","st_preparing":"準備中","st_ready":"出荷待ち","st_shipped":"出荷完了","st_rejected":"差戻し","st_cancelled":"キャンセル済み","rsn_request":"リクエスト理由","rsn_reject":"差戻し理由","rsn_cancel":"キャンセル理由","no_orders":"出庫リクエストがありません","photo_show":"写真を見る","photo_hide":"写真を閉じる","show_more":"件を表示","show_less":"閉じる","bn_ship_this":"今週の注文は{d}に発送されます","bn_edit_until":"{d}まで注文・修正できます","bn_week_ship":"この週の注文は{d}に発送予定です","bn_this_until":"今週({a}まで)の注文は{d}に発送されます","bn_today_new":"本日(月/火)の新規注文は{d}発送","bn_weekend":"週末の注文は翌週(月〜金)分として集計されます","bn_now_ship":"今の注文は{d}に発送されます","cyc_intake":"注文受付","cyc_prep":"準備・配送受付","cyc_ship":"発送","monfri":"月〜金","late_title":"⏰ 締切後の受付について","late_now":"現在は金曜午後6時以降／週末です","late_count":"この注文は翌週分として集計され、{d}に発送されます","late_hint":"2週間後の発送をご希望でない場合は、翌週の月〜金に再度お申し込みください","late_agree":"✅ 同意して発注する","late_back":"← カートに戻る","xl_reading":"📂 Excelを読み込み中...","xl_badformat":"Excelの形式をご確認ください","xl_nocol":"商品名・数量の列が見つかりません","xl_noqty":"数量が入力された商品がありません","xl_readerr":"Excel読み込みエラー","xl_review":"📂 オープン発注の確認","xl_avail":"✅ 発注可能 {n}件","xl_low":"⚠️ 在庫不足 {n}件 — 除外するか選択してください","xl_lowhint":"✅ チェックした商品は在庫数分だけ発注されます","xl_notfound":"❌ 見つからない商品 {n}件（自動除外）","xl_stockreq":"在庫 {s}個 / リクエスト {r}個","xl_country":"国コード","xl_country_ph":"例：USA, KR, JP","xl_submit":"🚀 オープン発注をリクエスト","ms_added":"{name} {n}個をカートに追加しました","ms_over_cur":"在庫数を超えています（現在の在庫：{n}個）","ms_over_add":"在庫数を超えています（追加可能：{n}個）","ms_need_store":"店舗名を入力してください","ms_need_cc":"国コードを入力してください","ms_need_type":"リクエスト種別を選択してください（破損／不足）","ms_need_detail":"詳細理由を入力してください","ms_need_open":"オープン店舗の情報を入力してください","ms_need_photo":"破損写真を添付してください 📷","ms_max3":"写真は最大3枚までアップロードできます","ms_bad_qty":"正しい数量を入力してください","ms_closed":"日曜午後9時以降は修正できません","ms_no_items":"発注する商品がありません","ms_order_ok":"📋 発注リクエストを受け付けました。管理者の確認後に出荷されます。","ms_open_ok":"🟢 オープン発注完了！{store} · {n}種","ms_qty_ok":"数量を変更しました ✅","ms_store_ok":"店舗名を変更しました ✅","ms_save_err":"保存エラー","search_ph":"🔍 店舗名・商品名で検索","search_result":"検索結果 {n}件","search_none":"検索結果がありません","o_ko":"韓国語","o_zh_cn":"中国語（簡体）","o_zh_tw":"中国語（繁体）","o_ja":"日本語","o_en":"英語","xl_tocart":"カートに追加","xl_tocart_hint":"カートに追加後、数量の調整や他の商品の追加ができます。最終的な発注はカートから行います。","xl_cart_ok":"🛒 {n}件の商品をカートに追加しました","xl_cart_capped":"{n}件は在庫数に調整","cart_form_dl":"発注フォームをダウンロード","form_downloading":"📄 発注フォームを取得中..."},"en":{"app_title":"Inventory","nav_stock":"Stock","nav_cart":"Cart","nav_orders":"Orders","stat_items":"All Items","stat_qty":"Total Qty","stat_low":"Low Stock","filter_all":"All","unit_type":"types","unit_pcs":"pcs","unit_case":"orders","soldout":"Sold Out","no_restock":"No Restock Planned","loading":"Loading...","lbl_year":"Year","lbl_collection":"Collection","lbl_itemname":"Item Name","lbl_option":"Option","connecting":"Connecting...","cart_empty":"Your cart is empty","cart_empty_desc":"Tap \"Add\" in the Stock tab","cart_goto_stock":"Go to Stock","cart_excel_open":"Open Store Order via Excel","cart_items":"Items in Cart","cart_clear":"Clear Cart","btn_order":"Place Order","btn_add":"Add","btn_remove":"Remove","btn_cancel":"Cancel","btn_edit":"Edit","btn_save":"Save","opt_select":"Select Option","opt_required":"⚠️ Please select an option","opt_selected":"✓ Selected:","lbl_qty":"Quantity","lbl_newqty":"New Quantity","order_confirm":"Confirm Order","lbl_store":"Store Name","lbl_reqtype":"Request Type","type_damaged":"Damaged","type_shortage":"Shortage","type_open":"New Store","note_photo_req":"⚠️ Damage photo required","note_photo_opt":"You can request without a photo","note_open":"New store opening order. No photo needed.","lbl_details":"Details","hint_specific":"Be specific","ph_reason":"e.g. SET1 PLATE broke after falling from display","lbl_photo":"Damage Photo","btn_addphoto":"Add Photo","max3":"Up to 3","n_selected":"selected","compressing":"Compressing...","req_required":"Required","req_optional":"Optional","req_notneeded":"Not needed","st_review":"Under Review","st_approved":"Approved","st_preparing":"Preparing","st_ready":"Ready to Ship","st_shipped":"Shipped","st_rejected":"Rejected","st_cancelled":"Cancelled","rsn_request":"Request Reason","rsn_reject":"Rejection Reason","rsn_cancel":"Cancellation Reason","no_orders":"No order requests","photo_show":"View Photos","photo_hide":"Hide Photos","show_more":"more","show_less":"Show less","bn_ship_this":"This week's orders ship on {d}","bn_edit_until":"Order and edit until {d}","bn_week_ship":"Orders this week ship on {d}","bn_this_until":"This week's orders (until {a}) ship on {d}","bn_today_new":"New orders today (Mon/Tue) ship on {d}","bn_weekend":"Weekend orders count toward next week (Mon-Fri)","bn_now_ship":"Orders placed now ship on {d}","cyc_intake":"Order Intake","cyc_prep":"Prep & Shipping","cyc_ship":"Ship","monfri":"Mon-Fri","late_title":"⏰ Late Order Notice","late_now":"It's after Friday 6 PM / the weekend","late_count":"This order counts toward next week and ships on {d}","late_hint":"If you don't want a 2-week wait, please reorder next Mon-Fri","late_agree":"✅ Agree and Order","late_back":"← Back to Cart","xl_reading":"📂 Reading Excel...","xl_badformat":"Please check the Excel format","xl_nocol":"Could not find Item Name / Quantity columns","xl_noqty":"No items have a quantity entered","xl_readerr":"Excel read error","xl_review":"📂 Review Open Store Order","xl_avail":"✅ {n} items available","xl_low":"⚠️ {n} items low on stock - choose whether to exclude","xl_lowhint":"✅ Checked items will be ordered up to available stock","xl_notfound":"❌ {n} items not found (auto-excluded)","xl_stockreq":"Stock {s} / Requested {r}","xl_country":"Country Code","xl_country_ph":"e.g. USA, KR, JP","xl_submit":"🚀 Submit Open Store Order","ms_added":"Added {n} x {name} to cart","ms_over_cur":"Exceeds available stock (in stock: {n})","ms_over_add":"Exceeds available stock (can add: {n})","ms_need_store":"Please enter the store name","ms_need_cc":"Please enter the country code","ms_need_type":"Please select a request type (Damaged / Shortage)","ms_need_detail":"Please enter details","ms_need_open":"Please enter the new store details","ms_need_photo":"Please attach a damage photo 📷","ms_max3":"You can upload up to 3 photos","ms_bad_qty":"Please enter a valid quantity","ms_closed":"Edits are closed after Sunday 9 PM","ms_no_items":"No items to order","ms_order_ok":"📋 Order received. It will ship after admin review.","ms_open_ok":"🟢 Open store order complete! {store} · {n} types","ms_qty_ok":"Quantity updated ✅","ms_store_ok":"Store name updated ✅","ms_save_err":"Save error","search_ph":"🔍 Search store or item","search_result":"{n} results","search_none":"No results found","o_ko":"Korean","o_zh_cn":"Chinese (Simplified)","o_zh_tw":"Chinese (Traditional)","o_ja":"Japanese","o_en":"English","xl_tocart":"Add to Cart","xl_tocart_hint":"After adding, you can adjust quantities or add other items. Place the final order from the cart.","xl_cart_ok":"🛒 Added {n} items to cart","xl_cart_capped":"{n} adjusted to stock","cart_form_dl":"Download Order Form","form_downloading":"📄 Downloading order form..."},"zh-CN":{"app_title":"库存管理","nav_stock":"库存","nav_cart":"购物车","nav_orders":"出货申请","stat_items":"全部商品","stat_qty":"总数量","stat_low":"库存不足","filter_all":"全部","unit_type":"种","unit_pcs":"个","unit_case":"件","soldout":"已售罄","no_restock":"暂无补货计划","loading":"正在加载数据...","lbl_year":"年份","lbl_collection":"系列","lbl_itemname":"商品名称","lbl_option":"选项","connecting":"连接中...","cart_empty":"购物车是空的","cart_empty_desc":"请在库存页点击「添加」按钮","cart_goto_stock":"查看库存","cart_excel_open":"用Excel提交新店开业订单","cart_items":"购物车商品","cart_clear":"清空购物车","btn_order":"提交订单","btn_add":"添加","btn_remove":"移除","btn_cancel":"取消","btn_edit":"修改","btn_save":"保存修改","opt_select":"选择选项","opt_required":"⚠️ 请选择选项","opt_selected":"✓ 已选:","lbl_qty":"数量","lbl_newqty":"新数量","order_confirm":"确认订单申请","lbl_store":"门店名称","lbl_reqtype":"申请类型","type_damaged":"破损","type_shortage":"缺货","type_open":"新店开业","note_photo_req":"⚠️ 必须上传破损照片","note_photo_opt":"无需照片即可申请","note_open":"新店开业订单，无需上传照片。","lbl_details":"详细说明","hint_specific":"请具体说明","ph_reason":"例：陈列用SET1 PLATE掉落破损","lbl_photo":"破损照片","btn_addphoto":"添加照片","max3":"最多3张","n_selected":"张已选","compressing":"压缩中...","req_required":"必填","req_optional":"选填","req_notneeded":"无需填写","st_review":"审核中","st_approved":"已批准","st_preparing":"备货中","st_ready":"待出货","st_shipped":"已出货","st_rejected":"已驳回","st_cancelled":"已取消","rsn_request":"申请原因","rsn_reject":"驳回原因","rsn_cancel":"取消原因","no_orders":"暂无出货申请记录","photo_show":"查看照片","photo_hide":"收起照片","show_more":"项","show_less":"收起","bn_ship_this":"本周订单将于{d}发货","bn_edit_until":"可于{d}前下单及修改","bn_week_ship":"该周订单预计于{d}发货","bn_this_until":"本周({a}前)订单将于{d}发货","bn_today_new":"今日(周一/周二)新订单将于{d}发货","bn_weekend":"周末订单计入下周(周一至周五)","bn_now_ship":"现在下单将于{d}发货","cyc_intake":"接收订单","cyc_prep":"备货·物流交接","cyc_ship":"发货","monfri":"周一至周五","late_title":"⏰ 逾期下单提示","late_now":"现在是周五下午6点后／周末","late_count":"该订单将计入下周，并于{d}发货","late_hint":"若不希望等待两周，请于下周一至周五重新提交","late_agree":"✅ 同意并提交订单","late_back":"← 返回购物车","xl_reading":"📂 正在读取Excel...","xl_badformat":"请确认Excel格式","xl_nocol":"找不到商品名称·数量列","xl_noqty":"没有填写数量的商品","xl_readerr":"Excel读取错误","xl_review":"📂 新店订单确认","xl_avail":"✅ 可发货 {n}件","xl_low":"⚠️ 库存不足 {n}件 — 请选择是否排除","xl_lowhint":"✅ 勾选的商品将按现有库存数量下单","xl_notfound":"❌ 未找到的商品 {n}件（自动排除）","xl_stockreq":"库存 {s}个 / 申请 {r}个","xl_country":"国家代码","xl_country_ph":"例：USA, KR, JP","xl_submit":"🚀 提交新店订单","ms_added":"已将{name} {n}个加入购物车","ms_over_cur":"超出可用库存（现有库存：{n}个）","ms_over_add":"超出可用库存（可添加：{n}个）","ms_need_store":"请输入门店名称","ms_need_cc":"请输入国家代码","ms_need_type":"请选择申请类型（破损／缺货）","ms_need_detail":"请输入详细说明","ms_need_open":"请输入新店信息","ms_need_photo":"请上传破损照片 📷","ms_max3":"最多可上传3张照片","ms_bad_qty":"请输入正确的数量","ms_closed":"周日晚上9点后无法修改","ms_no_items":"没有可下单的商品","ms_order_ok":"📋 订单申请已受理，经管理员审核后出货。","ms_open_ok":"🟢 新店订单已提交！{store} · {n}种","ms_qty_ok":"数量已修改 ✅","ms_store_ok":"门店名称已修改 ✅","ms_save_err":"保存错误","search_ph":"🔍 搜索门店·商品名","search_result":"搜索结果 {n}件","search_none":"没有搜索结果","o_ko":"韩语","o_zh_cn":"简体中文","o_zh_tw":"繁体中文","o_ja":"日语","o_en":"英语","xl_tocart":"加入购物车","xl_tocart_hint":"加入后可以调整数量或添加其他商品。最终订单请在购物车中提交。","xl_cart_ok":"🛒 已将{n}件商品加入购物车","xl_cart_capped":"{n}件已按库存调整","cart_form_dl":"下载订购表格","form_downloading":"📄 正在下载订购表格..."},"zh-TW":{"app_title":"庫存管理","nav_stock":"庫存","nav_cart":"購物車","nav_orders":"出貨申請","stat_items":"全部商品","stat_qty":"總數量","stat_low":"庫存不足","filter_all":"全部","unit_type":"種","unit_pcs":"個","unit_case":"件","soldout":"已售罄","no_restock":"暫無補貨計劃","loading":"正在載入資料...","lbl_year":"年份","lbl_collection":"系列","lbl_itemname":"商品名稱","lbl_option":"選項","connecting":"連線中...","cart_empty":"購物車是空的","cart_empty_desc":"請在庫存頁點擊「加入」按鈕","cart_goto_stock":"查看庫存","cart_excel_open":"用Excel提交新店開幕訂單","cart_items":"購物車商品","cart_clear":"清空購物車","btn_order":"提交訂單","btn_add":"加入","btn_remove":"移除","btn_cancel":"取消","btn_edit":"修改","btn_save":"儲存修改","opt_select":"選擇選項","opt_required":"⚠️ 請選擇選項","opt_selected":"✓ 已選:","lbl_qty":"數量","lbl_newqty":"新數量","order_confirm":"確認訂單申請","lbl_store":"門市名稱","lbl_reqtype":"申請類型","type_damaged":"破損","type_shortage":"缺貨","type_open":"新店開幕","note_photo_req":"⚠️ 必須上傳破損照片","note_photo_opt":"無需照片即可申請","note_open":"新店開幕訂單，無需上傳照片。","lbl_details":"詳細說明","hint_specific":"請具體說明","ph_reason":"例：陳列用SET1 PLATE掉落破損","lbl_photo":"破損照片","btn_addphoto":"新增照片","max3":"最多3張","n_selected":"張已選","compressing":"壓縮中...","req_required":"必填","req_optional":"選填","req_notneeded":"無需填寫","st_review":"審核中","st_approved":"已批准","st_preparing":"備貨中","st_ready":"待出貨","st_shipped":"已出貨","st_rejected":"已駁回","st_cancelled":"已取消","rsn_request":"申請原因","rsn_reject":"駁回原因","rsn_cancel":"取消原因","no_orders":"暫無出貨申請紀錄","photo_show":"查看照片","photo_hide":"收合照片","show_more":"項","show_less":"收合","bn_ship_this":"本週訂單將於{d}出貨","bn_edit_until":"可於{d}前下單及修改","bn_week_ship":"該週訂單預計於{d}出貨","bn_this_until":"本週({a}前)訂單將於{d}出貨","bn_today_new":"今日(週一/週二)新訂單將於{d}出貨","bn_weekend":"週末訂單計入下週(週一至週五)","bn_now_ship":"現在下單將於{d}出貨","cyc_intake":"接收訂單","cyc_prep":"備貨·物流交接","cyc_ship":"出貨","monfri":"週一至週五","late_title":"⏰ 逾期下單提示","late_now":"現在是週五下午6點後／週末","late_count":"該訂單將計入下週，並於{d}出貨","late_hint":"若不希望等待兩週，請於下週一至週五重新提交","late_agree":"✅ 同意並提交訂單","late_back":"← 返回購物車","xl_reading":"📂 正在讀取Excel...","xl_badformat":"請確認Excel格式","xl_nocol":"找不到商品名稱·數量欄","xl_noqty":"沒有填寫數量的商品","xl_readerr":"Excel讀取錯誤","xl_review":"📂 新店訂單確認","xl_avail":"✅ 可出貨 {n}件","xl_low":"⚠️ 庫存不足 {n}件 — 請選擇是否排除","xl_lowhint":"✅ 勾選的商品將按現有庫存數量下單","xl_notfound":"❌ 未找到的商品 {n}件（自動排除）","xl_stockreq":"庫存 {s}個 / 申請 {r}個","xl_country":"國家代碼","xl_country_ph":"例：USA, KR, JP","xl_submit":"🚀 提交新店訂單","ms_added":"已將{name} {n}個加入購物車","ms_over_cur":"超出可用庫存（現有庫存：{n}個）","ms_over_add":"超出可用庫存（可加入：{n}個）","ms_need_store":"請輸入門市名稱","ms_need_cc":"請輸入國家代碼","ms_need_type":"請選擇申請類型（破損／缺貨）","ms_need_detail":"請輸入詳細說明","ms_need_open":"請輸入新店資訊","ms_need_photo":"請上傳破損照片 📷","ms_max3":"最多可上傳3張照片","ms_bad_qty":"請輸入正確的數量","ms_closed":"週日晚上9點後無法修改","ms_no_items":"沒有可下單的商品","ms_order_ok":"📋 訂單申請已受理，經管理員審核後出貨。","ms_open_ok":"🟢 新店訂單已提交！{store} · {n}種","ms_qty_ok":"數量已修改 ✅","ms_store_ok":"門市名稱已修改 ✅","ms_save_err":"儲存錯誤","search_ph":"🔍 搜尋門市·商品名","search_result":"搜尋結果 {n}件","search_none":"沒有搜尋結果","o_ko":"韓語","o_zh_cn":"簡體中文","o_zh_tw":"繁體中文","o_ja":"日語","o_en":"英語","xl_tocart":"加入購物車","xl_tocart_hint":"加入後可以調整數量或新增其他商品。最終訂單請在購物車中提交。","xl_cart_ok":"🛒 已將{n}件商品加入購物車","xl_cart_capped":"{n}件已按庫存調整","cart_form_dl":"下載訂購表格","form_downloading":"📄 正在下載訂購表格..."}};
-const LANG_META=[
-  {code:"ko",   label:"한국어"},
-  {code:"ja",   label:"日本語"},
-  {code:"en",   label:"English"},
-  {code:"zh-CN",label:"简体中文"},
-  {code:"zh-TW",label:"繁體中文"},
-];
-function detectLang(){
-  try{ const s=localStorage.getItem("gm-lang"); if(s&&I18N[s]) return s; }catch(e){}
-  const n=(navigator.language||"ko").toLowerCase();
-  if(n.startsWith("ko")) return "ko";
-  if(n.startsWith("ja")) return "ja";
-  if(n.startsWith("zh")){
-    if(n.includes("tw")||n.includes("hk")||n.includes("hant")||n.includes("mo")) return "zh-TW";
-    return "zh-CN";
-  }
-  return "en";
-}
-let LANG=detectLang();
-// t("key") 또는 t("key",{n:3}) — 없는 키는 한국어로 대체
-function t(key,vars){
-  let s=(I18N[LANG]&&I18N[LANG][key])||I18N.ko[key]||key;
-  if(vars) for(const k in vars) s=s.split("{"+k+"}").join(vars[k]);
-  return s;
-}
-// 재고 옵션값(한국어/일본어 등) 번역
-const OPT_KEY={"한국어":"o_ko","중국어 간체":"o_zh_cn","중국어 번체":"o_zh_tw","일본어":"o_ja","영어":"o_en"};
-function tOpt(name){ const k=OPT_KEY[name]; return k?t(k):name; }
-// 숫자+단위: 라틴 문자권은 사이에 공백, CJK는 붙여쓰기
-// 저장된 한국어 값을 화면 표시용으로만 변환 (DB 값은 그대로 유지)
-const DAY_DISP={ko:["일","월","화","수","목","금","토"],ja:["日","月","火","水","木","金","土"],
-  en:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],"zh-CN":["日","一","二","三","四","五","六"],"zh-TW":["日","一","二","三","四","五","六"]};
-const KO_DAYS=["일","월","화","수","목","금","토"];
-// 배지처럼 단독 표기 시 (중국어는 "周一" 형태가 명확)
-const DAY_BADGE={ko:KO_DAYS,ja:["日","月","火","水","木","金","土"],
-  en:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],
-  "zh-CN":["周日","周一","周二","周三","周四","周五","周六"],
-  "zh-TW":["週日","週一","週二","週三","週四","週五","週六"]};
-function fmtWeek(label){                       // "7/20(월)~7/24(금)" → 언어별 표기
-  if(LANG==="ko"||!label) return label;
-  const d=DAY_DISP[LANG]||KO_DAYS;
-  return String(label).replace(/\(([일월화수목금토])\)/g,(m,k)=>"("+d[KO_DAYS.indexOf(k)]+")");
-}
-const STATUS_KEY={"검토중":"st_review","승인":"st_approved","준비중":"st_preparing",
-  "출고대기":"st_ready","출고완료":"st_shipped","반려":"st_rejected","취소":"st_cancelled"};
-function tStatus(s){ const k=STATUS_KEY[s]; return k?t(k):s; }
-const TYPE_KEY={"파손":"type_damaged","부족":"type_shortage","오픈":"type_open"};
-function tType(v){ const k=TYPE_KEY[v]; return k?t(k):v; }
-function fmtReason(r){                          // "[파손] 사유" → "[Damaged] 사유"
-  if(LANG==="ko"||!r) return r;
-  return String(r).replace(/^\[(파손|부족|오픈)\]/,(m,k)=>"["+tType(k)+"]");
-}
-function nu(n,unitKey){
-  if(LANG!=="en") return n+t(unitKey);
-  let u=t(unitKey);
-  const num=parseFloat(String(n).replace(/,/g,""));
-  if(num===1) u=u.replace(/s$/,"");   // 1 type / 1 pc
-  return n+" "+u;
-}
-// data-i18n 속성이 붙은 정적 요소 갱신
-function applyStaticI18n(){
-  document.documentElement.lang=LANG;
-  document.querySelectorAll("[data-i18n]").forEach(el=>{ el.textContent=t(el.dataset.i18n); });
-  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ el.placeholder=t(el.dataset.i18nPh); });
-  document.title=t("app_title");
-  updateHeaderSub();
-  syncPhotoLabel();
-}
-// 상세 사유 필수 표시 (오픈은 선택 사항)
-function syncReasonMark(){
-  const mark=document.getElementById("reason-required-mark");
-  if(!mark) return;
-  const sel=document.querySelector('input[name="order-type"]:checked')?.value;
-  if(sel==="오픈"){ mark.textContent="("+t("req_optional")+")"; mark.style.color="#475569"; mark.style.fontSize="10px"; }
-  else { mark.textContent="*"; mark.style.color=""; mark.style.fontSize=""; }
-}
-
-// 요청 유형에 따른 사진 필수/선택 라벨 (언어 전환 시에도 유지)
-function syncPhotoLabel(){
-  syncReasonMark();
-  const el=document.getElementById("photo-required-label");
-  if(!el) return;
-  const sel=document.querySelector('input[name="order-type"]:checked')?.value;
-  if(sel==="파손") el.innerHTML="<span style='color:#ef4444'>* "+t("req_required")+"</span>";
-  else if(sel==="오픈") el.textContent="("+t("req_notneeded")+")";
-  else el.textContent="("+t("req_optional")+")";
-}
-function updateHeaderSub(){
-  const el=document.getElementById("header-sub");
-  if(!el) return;
-  if(!items.length){ el.textContent=t("connecting"); return; }
-  const total=items.reduce((a,i)=>a+totalQty(i),0);
-  el.textContent=`${nu(items.length,"unit_type")} · ${nu(total.toLocaleString(),"unit_pcs")}`;
-}
-window.setLang=code=>{
-  if(!I18N[code]) return;
-  LANG=code;
-  try{ localStorage.setItem("gm-lang",code); }catch(e){}
-  applyStaticI18n();
-  const btn=document.getElementById("lang-label");
-  if(btn) btn.textContent=(LANG_META.find(l=>l.code===code)||{}).label||code;
-  document.getElementById("lang-menu").style.display="none";
-  if(typeof renderStock==="function") renderStock();
-  if(typeof renderCart==="function") renderCart();
-  if(typeof renderOrders==="function") renderOrders();
-};
-window.toggleLangMenu=()=>{
-  const m=document.getElementById("lang-menu");
-  if(m) m.style.display=m.style.display==="block"?"none":"block";
-};
-
-// 발주 양식 다운로드 주소
-// 구글 시트를 엑셀로 내보내는 주소 — 시트를 수정하면 다음 다운로드부터 바로 반영된다.
-// (임시 파일이 생기지 않고, 시트가 "링크가 있는 모든 사용자" 보기 권한이면 로그인 없이 받을 수 있다)
-const ORDER_FORM_ID  = "157iPwnVBPp2cSwqH8z-Ge1fLFGvDuzXMKyhAYKeNvuk";
-const ORDER_FORM_GID = "917488674";
-const ORDER_FORM_URL = "https://docs.google.com/spreadsheets/d/" + ORDER_FORM_ID
-  + "/export?format=xlsx&gid=" + ORDER_FORM_GID;
-
-let items=[],orders=[],cart=[];
-
-// 출고요청 상태 표시 (관리자 index.html과 동일한 상태값)
-const VIEW_STATUS={
-  "검토중":  {icon:"🔍", label:"검토중",  bg:"rgba(139,92,246,0.15)", color:"#a78bfa", border:"rgba(139,92,246,0.3)"},
-  "승인":    {icon:"✅", label:"승인됨",  bg:"rgba(59,130,246,0.15)", color:"#60a5fa", border:"rgba(59,130,246,0.3)"},
-  "준비중":  {icon:"🔄", label:"준비중",  bg:"rgba(251,191,36,0.15)", color:"#fbbf24", border:"rgba(251,191,36,0.3)"},
-  "출고대기":{icon:"📦", label:"출고대기",bg:"rgba(249,115,22,0.15)", color:"#fb923c", border:"rgba(249,115,22,0.3)"},
-  "출고완료":{icon:"✅", label:"출고완료",bg:"rgba(52,211,153,0.15)", color:"#34d399", border:"rgba(52,211,153,0.3)"},
-  "반려":    {icon:"❌", label:"반려",    bg:"rgba(239,68,68,0.15)",  color:"#ef4444", border:"rgba(239,68,68,0.3)"},
-  "취소":    {icon:"🚫", label:"취소됨",  bg:"rgba(100,116,139,0.15)",color:"#94a3b8", border:"rgba(100,116,139,0.3)"},
-};
-function statusBadgeHTML(status){
-  const s=VIEW_STATUS[status]||VIEW_STATUS["검토중"];
-  return `<span class="status-badge" style="background:${s.bg};color:${s.color};border:1px solid ${s.border}">${s.icon} ${tStatus(status)}</span>`;
-}
+window.closeModal=id=>{document.getElementById(id)?.remove();};
+let items=[],orders=[];
 let filterYear="전체",filterColl="전체";
 let collapsedGroups=new Set();
 let collapsedWeeks=new Set();
+let collapsedMonths=new Set();
+let collapsedYears=new Set();
 let showLowOnly=false,isDark=true;
-let cartTarget=null,cartSelOpt=null;
 
 function isSet(i){return i.name&&i.name.toUpperCase().includes("SET");}
 function totalQty(i){
@@ -459,10 +273,11 @@ function isLow(i){return totalQty(i)<10;}
 function getWeekLabel(dateStr){
   const d=new Date(dateStr);
   const day=d.getDay(); // 0=일,1=월,...,6=토
+  // 토(6),일(0)은 다음 주 월요일로 집계
   const mon=new Date(d);
-  if(day===0) mon.setDate(d.getDate()+1);      // 일→다음주 월
-  else if(day===6) mon.setDate(d.getDate()+2); // 토→다음주 월
-  else mon.setDate(d.getDate()-(day-1));        // 월(1)~금(5)→이번주 월
+  if(day===0) mon.setDate(d.getDate()+1);       // 일→다음월
+  else if(day===6) mon.setDate(d.getDate()+2);  // 토→다음월
+  else mon.setDate(d.getDate()-(day-1));         // 월~금→이번주월
   const fri=new Date(mon);fri.setDate(mon.getDate()+4);
   const fmt=dt=>`${dt.getMonth()+1}/${dt.getDate()}`;
   const days=["일","월","화","수","목","금","토"];
@@ -484,15 +299,15 @@ window.toggleTheme=()=>{
   renderStock();renderOrders();
 };
 
-window.switchTab=tab=>{
-  ["stock","cart","orders"].forEach(id=>{
+window.switchTab=t=>{
+  ["stock","batch","orders"].forEach(id=>{
     document.getElementById("tab-"+id).classList.remove("active");
     document.getElementById("nav-"+id).classList.remove("active");
   });
-  document.getElementById("tab-"+tab).classList.add("active");
-  document.getElementById("nav-"+tab).classList.add("active");
-  if(tab==="cart")renderCart();
-  if(tab==="orders")renderOrders();
+  document.getElementById("tab-"+t).classList.add("active");
+  document.getElementById("nav-"+t).classList.add("active");
+  if(t==="orders")renderOrders();
+
 };
 
 window.closeModal=id=>document.getElementById(id).style.display="none";
@@ -503,7 +318,8 @@ let firstLoad=true;
 onSnapshot(collection(db,"items"),snap=>{
   items=snap.docs.map(d=>({...d.data(),id:d.id}));
   if(firstLoad){document.getElementById("loading").style.display="none";firstLoad=false;}
-  updateHeaderSub();
+  const total=items.reduce((a,i)=>a+totalQty(i),0);
+  document.getElementById("header-sub").textContent=`${items.length}종 · ${total.toLocaleString()}개`;
   renderStock();
 });
 onSnapshot(query(collection(db,"orders"),orderBy("createdAt","desc")),snap=>{
@@ -517,516 +333,41 @@ window.setFC=c=>{filterColl=c;renderStock();};
 window.toggleGroup=gk=>{collapsedGroups.has(gk)?collapsedGroups.delete(gk):collapsedGroups.add(gk);renderStock();};
 window.toggleLowOnly=()=>{showLowOnly=!showLowOnly;renderStock();};
 
-// ── 장바구니 모달 ──
-window.openCartModal=(itemId)=>{
-  cartTarget=items.find(i=>i.id===itemId);if(!cartTarget)return;
-  const hasOpts=cartTarget.options?.length>0;
-  cartSelOpt=hasOpts?cartTarget.options[0].name:null;
-  document.getElementById("cart-modal-title").textContent=cartTarget.name;
-  document.getElementById("cart-qty").value=1;
-  renderCartOptWrap();
-  updateStockLabel();
-  document.getElementById("cart-modal").style.display="flex";
-};
+// ── 렌더 재고 ──
 
-function renderCartOptWrap(){
-  const wrap=document.getElementById("cart-opt-wrap");
-  if(!cartTarget?.options?.length){wrap.innerHTML="";return;}
-  wrap.innerHTML=`<div class="field-label" style="margin-bottom:8px">${t("opt_select")}</div><div style="display:flex;flex-wrap:wrap;gap:6px">`
-    +cartTarget.options.map(o=>{
-      const isSel=cartSelOpt===o.name;
-      const isLow=(o.quantity||0)<1;
-      return `<button onclick="window.selOpt('${o.name.replace(/'/g,"\'")}') "
-        style="padding:8px 14px;border-radius:10px;font-size:12px;font-weight:${isSel?700:500};cursor:pointer;
-          border:2px solid ${isSel?"#6366f1":isLow?"rgba(239,68,68,0.3)":"rgba(255,255,255,0.12)"};
-          background:${isSel?"rgba(99,102,241,0.25)":isLow?"rgba(239,68,68,0.05)":"rgba(255,255,255,0.05)"};
-          color:${isSel?"#a5b4fc":isLow?"#f87171":"#94a3b8"};
-          transform:${isSel?"scale(1.03)":"scale(1)"};
-          box-shadow:${isSel?"0 0 0 1px #6366f1":"none"}">
-        ${isSel?"✓ ":""}${tOpt(o.name)}<span style="font-size:10px;margin-left:4px;opacity:.8">${nu(o.quantity||0,"unit_pcs")}</span>
-      </button>`;
-    }).join("")+`</div>
-    ${cartSelOpt
-      ?`<div style="margin-top:10px;padding:7px 12px;border-radius:8px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);font-size:12px;color:#a5b4fc;font-weight:600">${t("opt_selected")} ${tOpt(cartSelOpt)}</div>`
-      :`<div style="margin-top:8px;font-size:12px;color:#f87171">${t("opt_required")}</div>`}`;
-}
-window.selOpt=name=>{cartSelOpt=name;renderCartOptWrap();updateStockLabel();};
-function updateStockLabel(){
-  if(!cartTarget)return;
-  let stock=0;
-  if(cartSelOpt&&cartTarget.options){const o=cartTarget.options.find(x=>x.name===cartSelOpt);stock=o?.quantity||0;}
-  else stock=totalQty(cartTarget);
-  document.getElementById("cart-stock-label").textContent=`${t("nav_stock")} ${nu(stock,"unit_pcs")}`;
-}
-window.adjQty=d=>{
-  const el=document.getElementById("cart-qty");
-  el.value=Math.max(1,parseInt(el.value||1)+d);
-};
-window.confirmAddToCart=()=>{
-  if(!cartTarget)return;
-  const qty=parseInt(document.getElementById("cart-qty").value)||1;
-  let stock=0;
-  if(cartSelOpt&&cartTarget.options){const o=cartTarget.options.find(x=>x.name===cartSelOpt);stock=o?.quantity||0;}
-  else stock=totalQty(cartTarget);
-  if(qty>stock){showToast(t("ms_over_cur",{n:stock}), "#f87171");return;}
-  const key=cartTarget.id+(cartSelOpt||"");
-  const existing=cart.find(c=>c.key===key);
-  if(existing){
-    // 합산 시 재고 초과 체크
-    let stock2=0;
-    if(cartSelOpt&&cartTarget.options){const o2=cartTarget.options.find(x=>x.name===cartSelOpt);stock2=o2?.quantity||0;}
-    else stock2=totalQty(cartTarget);
-    if(existing.qty+qty>stock2){showToast(t("ms_over_cur",{n:stock2}),"#f87171");return;}
-    existing.qty+=qty;
-  } else cart.push({key,itemId:cartTarget.id,itemName:cartTarget.name,optName:cartSelOpt,collection:cartTarget.collection,qty,unit:cartTarget.unit||"개"});
-  closeModal("cart-modal");
-  updateCartBadge();
-  showToast("🛒 "+t("ms_added",{name:cartTarget.name+(cartSelOpt?" ["+tOpt(cartSelOpt)+"]":""),n:qty}));
-};
-
-function updateCartBadge(){
-  const total=cart.reduce((a,c)=>a+c.qty,0);
-  const badge=document.getElementById("cart-badge");
-  if(total>0){badge.style.display="flex";badge.textContent=total;}
-  else badge.style.display="none";
-}
-
-// ── 발주 ──
-window.openCheckout=()=>{
-  if(!cart.length)return;
-  const total=cart.reduce((a,c)=>a+c.qty,0);
-  document.getElementById("checkout-list").innerHTML=cart.map(c=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(128,128,128,0.1)">
-      <div>
-        <div style="font-size:13px;font-weight:600">${c.itemName}${c.optName?` [${c.optName}]`:""}</div>
-        <div style="font-size:10px;color:#6366f1;margin-top:1px">${c.collection}</div>
-      </div>
-      <div style="font-weight:800;font-size:14px">${c.qty}<span style="font-size:10px;font-weight:400;color:#475569"> ${c.unit}</span></div>
-    </div>`).join("")
-    +`<div style="border-top:1px solid rgba(128,128,128,0.15);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px">
-      <span style="color:#475569">${t("stat_qty")}</span><span style="font-weight:800;color:#6366f1">${nu(total,"unit_pcs")}</span></div>`;
-  document.getElementById("store-name").value="";
-  setTimeout(()=>initStoreAutocomplete("store-name"), 50);
-  // 라디오 초기화
-  document.querySelectorAll('input[name="order-type"]').forEach(r=>r.checked=false);
-  if(openOrderFromExcel){
-    const rOpen=document.querySelector('input[name="order-type"][value="오픈"]');
-    if(rOpen){ rOpen.checked=true; onOrderTypeChange(); }
-  }
-  const notice=document.getElementById("type-notice");
-  if(notice) notice.textContent="";
-  ["파손","부족","오픈"].forEach(t=>{
-    const lbl=document.getElementById("type-label-"+t);
-    if(lbl){lbl.style.borderColor="rgba(255,255,255,0.1)";lbl.style.background="rgba(255,255,255,0.04)";}
-  });
-  document.getElementById("checkout-modal").style.display="flex";
-  setTimeout(()=>document.getElementById("store-name").focus(),100);
-};
-
-// ── 엑셀 오픈 발주 처리 ──
-window.handleOpenOrderExcel = async(input) => {
-  const file = input.files[0];
-  if (!file) return;
-  input.value = "";
-
-  showToast(t("xl_reading"), "#60a5fa");
-
-  const reader = new FileReader();
-  reader.onload = async(e) => {
-    try {
-      const wb = XLSX.read(e.target.result, {type:"array"});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
-
-      // 헤더 찾기 (컬렉션, 상품명, 옵션, 수량 포함한 행)
-      let headerRow = -1;
-      for (let i = 0; i < Math.min(rows.length, 5); i++) {
-        const r = rows[i].map(c => String(c||"").trim());
-        if (r.some(c => c.includes("상품명") || c.includes("컬렉션"))) {
-          headerRow = i; break;
-        }
-      }
-      if (headerRow === -1) { showToast(t("xl_badformat"), "#f87171"); return; }
-
-      const headers = rows[headerRow].map(c => String(c||"").trim());
-      const collIdx = headers.findIndex(h => h.includes("컬렉션"));
-      const nameIdx = headers.findIndex(h => h.includes("상품명"));
-      const optIdx  = headers.findIndex(h => h.includes("옵션"));
-      const qtyIdx  = headers.findIndex(h => h.includes("수량"));
-
-      if (nameIdx === -1 || qtyIdx === -1) {
-        showToast(t("xl_nocol"), "#f87171"); return;
-      }
-
-      // 데이터 파싱
-      let curColl = "", curName = "";
-      const parsed = [];
-
-      for (let i = headerRow + 1; i < rows.length; i++) {
-        const row = rows[i];
-        const coll = String(collIdx >= 0 ? row[collIdx]||"" : "").trim();
-        const name = String(nameIdx >= 0 ? row[nameIdx]||"" : "").trim();
-        const opt  = String(optIdx  >= 0 ? row[optIdx] ||"" : "").trim();
-        const qty  = parseInt(row[qtyIdx]) || 0;
-
-        if (coll) curColl = coll;
-        if (name) curName = name;
-        if (!curName) continue;
-        if (qty <= 0) continue; // 수량 0이면 건너뜀
-
-        parsed.push({ collection: curColl, name: curName, opt, qty });
-      }
-
-      if (!parsed.length) {
-        showToast(t("xl_noqty"), "#f87171"); return;
-      }
-
-      // 재고 매칭 및 부족 검사
-      const matched = [], insufficient = [], notFound = [];
-
-      parsed.forEach(p => {
-        // 상품명으로 매칭
-        const item = items.find(i =>
-          i.name.toUpperCase() === p.name.toUpperCase() &&
-          (!p.collection || i.collection.toUpperCase() === p.collection.toUpperCase())
-        ) || items.find(i => i.name.toUpperCase() === p.name.toUpperCase());
-
-        if (!item) { notFound.push(p); return; }
-
-        // 재고 확인
-        let stock = 0;
-        if (p.opt && item.options) {
-          const o = item.options.find(o => o.name.includes(p.opt) || p.opt.includes(o.name));
-          stock = o ? (o.quantity || 0) : 0;
-        } else {
-          stock = item.options?.length ? Math.min(...item.options.map(o=>o.quantity||0)) : (item.quantity||0);
-        }
-
-        const optName = p.opt && item.options ?
-          (item.options.find(o => o.name.includes(p.opt) || p.opt.includes(o.name))?.name || p.opt) : null;
-
-        if (stock < p.qty) {
-          insufficient.push({...p, item, optName, stock, available: stock});
-        } else {
-          matched.push({...p, item, optName, stock});
-        }
-      });
-
-      // 결과 모달 표시
-      showOpenOrderReviewModal(matched, insufficient, notFound);
-
-    } catch(err) {
-      showToast(t("xl_readerr")+": "+err.message, "#f87171");
-    }
-  };
-  reader.readAsArrayBuffer(file);
-};
-
-// 오픈 발주 검토 모달
-function showOpenOrderReviewModal(matched, insufficient, notFound) {
-  const modal = document.createElement("div");
-  modal.className = "modal-bg";
-  modal.id = "open-order-modal";
-
-  let insufHtml = "";
-  if (insufficient.length) {
-    insufHtml = `<div style="margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:6px">${t("xl_low",{n:insufficient.length})}</div>
-      ${insufficient.map((p,i) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);margin-bottom:4px">
-          <input type="checkbox" id="insuf-${i}" checked style="accent-color:#6366f1;width:16px;height:16px;flex-shrink:0">
-          <div style="flex:1;font-size:12px">
-            <span style="color:#6366f1;font-size:10px;font-weight:600">${p.collection}</span>
-            <span style="font-weight:700;margin-left:4px">${p.name}</span>
-            ${p.opt?`<span style="color:#94a3b8"> [${p.opt}]</span>`:""}
-          </div>
-          <div style="font-size:11px;text-align:right;flex-shrink:0">
-            <span style="color:#f87171">${t("xl_stockreq",{s:p.stock,r:p.qty}).split(" / ")[0]}</span>
-            <span style="color:#94a3b8"> / ${t("xl_stockreq",{s:p.stock,r:p.qty}).split(" / ")[1]||p.qty}</span>
-          </div>
-        </div>`).join("")}
-      <div style="font-size:11px;color:#475569;margin-top:4px">${t("xl_lowhint")}</div>
-    </div>`;
-  }
-
-  let notFoundHtml = "";
-  if (notFound.length) {
-    notFoundHtml = `<div style="margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">${t("xl_notfound",{n:notFound.length})}</div>
-      ${notFound.map(p=>`<div style="font-size:11px;color:#f87171;padding:3px 0">${p.collection} - ${p.name}${p.opt?` [${p.opt}]`:""}</div>`).join("")}
-    </div>`;
-  }
-
-  modal.innerHTML = `<div class="modal-sheet" style="max-height:90dvh;overflow-y:auto">
-    <div class="modal-handle"></div>
-    <div class="modal-title">${t("xl_review")}</div>
-    <div style="font-size:12px;color:#34d399;margin-bottom:12px;padding:8px 10px;background:rgba(52,211,153,0.08);border-radius:8px;border:1px solid rgba(52,211,153,0.2)">
-      ${t("xl_avail",{n:matched.length})}
-    </div>
-    ${insufHtml}
-    ${notFoundHtml}
-    <div style="font-size:11px;color:#94a3b8;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:8px;padding:9px 11px;margin-bottom:10px;line-height:1.6">
-      ${t("xl_tocart_hint")}
-    </div>
-    <button class="btn-primary" onclick="window.addOpenOrderToCart()">🛒 ${t("xl_tocart")}</button>
-    <button class="btn-secondary-sm modal-close-btn">${t("btn_cancel")}</button>
-  </div>`;
-
-  modal.addEventListener("click", e => { if(e.target===modal) modal.remove(); });
-  document.body.appendChild(modal);
-
-  // 매칭/부족 데이터 저장
-  modal._matched = matched;
-  modal._insufficient = insufficient;
-}
-
-window.addOpenOrderToCart = () => {
-  const modal = document.getElementById("open-order-modal");
-  if(!modal) return;
-  const matched = modal._matched || [];
-  const insufficient = modal._insufficient || [];
-
-  // 체크된 재고부족 품목은 남은 재고 수량만큼만
-  const checkedInsuf = insufficient.filter((p,i) => {
-    const cb = document.getElementById("insuf-"+i);
-    return cb && cb.checked && p.stock > 0;
-  }).map(p => ({...p, qty: p.stock}));
-
-  const finalItems = [...matched, ...checkedInsuf];
-  if (!finalItems.length) { showToast(t("ms_no_items"), "#f87171"); return; }
-
-  // 장바구니에 합치기 (이미 담긴 품목은 수량 합산, 재고 상한 적용)
-  let added = 0, capped = 0;
-  openOrderFromExcel = true;   // 발주서에서 '오픈' 자동 선택용
-  finalItems.forEach(p => {
-    const key = p.item.id + (p.optName || "");
-    const exist = cart.find(x => x.key === key);
-    if (exist) {
-      const total = exist.qty + p.qty;
-      if (total > p.stock) { exist.qty = p.stock; capped++; }
-      else exist.qty = total;
-    } else {
-      cart.push({
-        key,
-        itemId: p.item.id,
-        itemName: p.item.name,
-        optName: p.optName || null,
-        collection: p.item.collection,
-        qty: p.qty,
-        unit: p.item.unit || "개"
-      });
-    }
-    added++;
-  });
-
-  modal.remove();
-  updateCartBadge();
-  renderCart();
-  switchTab("cart");
-  showToast(t("xl_cart_ok",{n:added}) + (capped ? " ("+t("xl_cart_capped",{n:capped})+")" : ""), "#34d399");
-};
-
-
-// 요청 유형 변경 핸들러
-window.onOrderTypeChange=()=>{
-  syncReasonMark();
-  const type=document.querySelector('input[name="order-type"]:checked')?.value;
-  const notice=document.getElementById("type-notice");
-  const reqLabel=document.getElementById("photo-required-label");
-  const photoWrap=document.getElementById("photo-wrap");
-
-  // 라벨 스타일 업데이트
-  ["파손","부족"].forEach(t=>{
-    const lbl=document.getElementById("type-label-"+t);
-    if(lbl){
-      if(t===type){
-        lbl.style.borderColor=t==="파손"?"#ef4444":"#fbbf24";
-        lbl.style.background=t==="파손"?"rgba(239,68,68,0.1)":"rgba(251,191,36,0.1)";
-      } else {
-        lbl.style.borderColor="rgba(255,255,255,0.1)";
-        lbl.style.background="rgba(255,255,255,0.04)";
-      }
-    }
-  });
-
-  if(type==="파손"){
-    if(notice) notice.innerHTML="<span style='color:#ef4444'>"+t("note_photo_req")+"</span>";
-    if(reqLabel) reqLabel.innerHTML="<span style='color:#ef4444'>* "+t("req_required")+"</span>";
-    if(photoWrap) photoWrap.style.display="";
-  } else if(type==="부족"){
-    if(notice) notice.textContent=t("note_photo_opt");
-    if(reqLabel) reqLabel.textContent="("+t("req_optional")+")";
-    if(photoWrap) photoWrap.style.display="";
-  } else if(type==="오픈"){
-    if(notice) notice.textContent=t("note_open");
-    if(reqLabel) reqLabel.textContent="("+t("req_notneeded")+")";
-    if(photoWrap) photoWrap.style.display="none";
-  } else {
-    if(notice) notice.textContent="";
-  }
-};
-
-// 늦은 접수 안내 모달
-function showLateOrderModal(shipDate){
-  const modal=document.createElement("div");
-  modal.className="modal-bg";modal.id="late-order-modal";
-  modal.innerHTML=`<div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:36px;margin-bottom:8px">⏰</div>
-      <div style="font-weight:800;font-size:16px;margin-bottom:8px">${t("late_title").replace("⏰ ","")}</div>
-    </div>
-    <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.7;text-align:center">
-      ${t("late_now")}<br><br>
-      <strong>${t("late_count",{d:`<span style="color:#34d399;font-size:15px">${shipDate}</span>`})}</strong><br><br>
-      <span style="font-size:11px;color:#475569">${t("late_hint")}</span>
-    </div>
-    <button onclick="document.getElementById('late-order-modal').remove();window.confirmOrder(true);"
-      class="btn-primary" style="margin-bottom:8px">${t("late_agree")}</button>
-    <button onclick="document.getElementById('late-order-modal').remove();window.switchTab('cart');"
-      class="btn-secondary-sm">${t("late_back")}</button>
-  </div>`;
-  modal.addEventListener("click",e=>{if(e.target===modal){modal.remove();switchTab('cart');}});
-  document.body.appendChild(modal);
-}
-
-// ── 매장명 자동완성 데이터 ──
-const STORE_LIST = ["하우스 성수 _ KR", "하우스 도산 _ KR", "신사 FS _ KR", "홍대 FS _ KR", "롯데월드타워 (잠실) _ KR", "신세계 스타필드 (하남) _ KR", "롯데 (동탄) _ KR", "현대 (여의도) _ KR", "롯데 (명동) _ KR", "롯데 (서면) _ KR", "신세계 (센텀) _ KR", "신세계 (대구) _ KR", "신세계 (경기) _ KR", "신세계 (의정부) _ KR", "신세계 (명동) _ KR", "신세계 (강남) _ KR", "신세계 (대전) _ KR", "신세계 (광주) _ KR", "현대 (무역) _ KR", "현대 (대구) _ KR", "현대 (판교) _ KR", "갤러리아 (광교) _ KR", "갤러리아 (압구정) _ KR", "롯데 (잠실) _ KR", "신세계 (천안아산) _ KR", "현대 (압구정) _ KR", "갤러리아 (대전) _ KR", "현대 (목동) _ KR", "롯데 소공 면세 _ KR", "롯데 월드타워 면세 _ KR", "신세계 명동 면세 _ KR", "현대 면세 (인천공항 T1) _ KR", "신라 면세 (인청공항 T2) _ KR", "신라 서울 면세 _ KR", "신라 제주 면세 _ KR", "롯데 제주 면세 _ KR", "HAUS SHANGHAI _ CN", "TAIKOO-S BEIJING _ CN", "TAIKOO CHENGDU _ CN", "HANGZHOU TOWER _ CN", "DEJI NANJING _ CN", "SKP BEIJING _ CN", "HANKYU NINGBO _ CN", "TAIKOOLI SHANGHAI _ CN", "SKP CHENGDU _ CN", "MIXC XIAMEN _ CN", "PC GUANGZHOU _ CN", "IFC SHANGHAI _ CN", "TAIKOO GUANGZHOU _ CN", "SKP XIAN _ CN", "MIXC SHENYANG _ CN", "CHANGSHA IFS _ CN", "HANGZHOU MIXC _ CN", "HAUS SHENZHEN _ CN", "HAINAN SANYA _ CN", "CHONGQING MIXC _ CN", "SHANGHAI XINTIANDI _ CN", "SHANGHAI OFFICE _ CN", "NEWYORK _ USA", "LA COSTAMESA _ USA", "LA FS _ USA", "SAN JOSE _ USA", "HOUSTON _ USA", "NEWJERSEY _ USA", "LAS VEGAS _ USA", "USE OFFICE _ USA", "TORONTO _ CANADA", "ION _ SG", "MBS _ SG", "HABOUR CITY _ HK", "CAUSEWAY _ HK", "BREEZE TAIWAN _ TW", "THAICHUNG _ TW", "THE DUBAI MALL _ DUBAI", "SYDNEY AIR _ AUS", "MELBOURNE _ AUS", "DAVID JONES _ AUS", "BLUEBELL OFFICE _ AUS", "SELFIDGE LONDON _ UK", "10CC _ ITALY", "EMQUARTIER _ THAI", "SIAM-PARAGON _ THAI", "ICON SIAM _ THAI", "SHANGRI-LA _ PHILIPPINES", "TRX _ MAL", "KLCC _ MAL", "OSAKA HANKYU _ JP", "TOKYO AOYAMA _ JP", "TOKYO HANKYU _ JP", "TOKYO GINZA _ JP", "TOKYO HARAJUKU _ JP", "OSAKA PARCO _ JP", "PARIS _ FR"];
-
-function initStoreAutocomplete(inputId){
-  const input = document.getElementById(inputId);
-  if(!input) return;
-
-  // 드롭다운 컨테이너 생성
-  const wrap = input.parentElement;
-  wrap.style.position = "relative";
-  const dropdown = document.createElement("div");
-  dropdown.id = inputId + "-dropdown";
-  dropdown.style.cssText = "position:absolute;top:100%;left:0;right:0;background:#1e2235;border:1px solid rgba(99,102,241,0.3);border-radius:10px;max-height:200px;overflow-y:auto;z-index:999;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4)";
-  wrap.appendChild(dropdown);
-
-  input.addEventListener("input", ()=>{
-    const q = input.value.trim().toLowerCase();
-    if(!q){ dropdown.style.display="none"; return; }
-    const matches = STORE_LIST.filter(s => s.toLowerCase().includes(q));
-    if(!matches.length){ dropdown.style.display="none"; return; }
-    dropdown.innerHTML = matches.slice(0,8).map(s=>
-      `<div onclick="document.getElementById('${inputId}').value='${s.replace(/'/g,"\'")}';document.getElementById('${inputId}-dropdown').style.display='none'"
-        style="padding:10px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05)"
-        onmouseover="this.style.background='rgba(99,102,241,0.15)'"
-        onmouseout="this.style.background=''">${s}</div>`
-    ).join("");
-    dropdown.style.display="block";
-  });
-
-  // 외부 클릭 시 드롭다운 닫기
-  document.addEventListener("click", e=>{
-    if(!wrap.contains(e.target)) dropdown.style.display="none";
-  });
-}
-
-// 사진 미리보기 (최대 3장, 자동 압축)
-let orderPhotosBase64=[];
-let openOrderFromExcel=false;   // 엑셀로 담은 오픈 발주 여부
-function compressImage(file, maxW=1600, quality=0.9){
-  return new Promise(resolve=>{
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const img=new Image();
-      img.onload=()=>{
-        const canvas=document.createElement("canvas");
-        let w=img.width, h=img.height;
-        if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
-        canvas.width=w;canvas.height=h;
-        canvas.getContext("2d").drawImage(img,0,0,w,h);
-        resolve(canvas.toDataURL("image/jpeg",quality));
-      };
-      img.src=e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-window.previewPhotos=async()=>{
-  const files=Array.from(document.getElementById("order-photos")?.files||[]);
-  if(!files.length)return;
-  if(files.length>3){showToast(t("ms_max3"),"#fbbf24");return;}
-  orderPhotosBase64=[];
-  const wrap=document.getElementById("photo-preview-wrap");
-  if(wrap)wrap.innerHTML=`<div style="font-size:11px;color:#475569;width:100%;margin-bottom:4px">${t("compressing")}</div>`;
-  for(const file of files){
-    const compressed=await compressImage(file);
-    orderPhotosBase64.push(compressed);
-    if(wrap){
-      const img=document.createElement("img");
-      img.src=compressed;
-      img.style.cssText="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.1)";
-      wrap.appendChild(img);
-    }
-  }
-  const firstChild=wrap?.querySelector("div");
-  if(firstChild)firstChild.remove();
-  document.getElementById("photo-count-label") && (document.getElementById("photo-count-label").textContent=`${files.length}${t("n_selected")}`);
-};
-
-window.confirmOrder=async(skipLateCheck=false)=>{
-  const storeName=document.getElementById("store-name").value.trim();
-  const orderType=document.querySelector('input[name="order-type"]:checked')?.value;
-  const reason=document.getElementById("order-reason").value.trim();
-  if(!storeName){showToast(t("ms_need_store"),"#f87171");return;}
-  if(!orderType){showToast(t("ms_need_type"),"#f87171");return;}
-  // 오픈 매장 발주는 상세 사유 선택 사항
-  if(orderType!=="오픈" && !reason){showToast(t("ms_need_detail"),"#f87171");return;}
-  if(orderType==="파손"&&orderPhotosBase64.length===0){showToast(t("ms_need_photo"),"#f87171");return;}
-
-  // 늦은 접수 경고 팝업
-  if(!skipLateCheck && isLateOrder()){
-    const shipDate=getLateShipDate();
-    showLateOrderModal(shipDate);
+// ── 재고 카드 버튼 이벤트 위임 ──
+// 상품명에 줄바꿈이나 따옴표가 들어가도 안전하도록 onclick 대신 위임을 쓴다.
+document.addEventListener("click", e => {
+  const nameBtn = e.target.closest(".item-name-btn");
+  if(nameBtn){
+    const it = items.find(x => x.id === nameBtn.dataset.iid);
+    if(it) window.openItemNameModal(it.id, it.name || "");
     return;
   }
-  // 재고 차감 — 발주 요청 시점에 즉시 뺀다 (오버부킹 방지)
-  // 취소·반려 시에는 관리자 화면에서 되돌린다
-  for(const c of cart){
-    const item=items.find(i=>i.id===c.itemId);
-    if(!item) continue;
-    const clone=JSON.parse(JSON.stringify(item));
-    if(c.optName&&clone.options){
-      const o=clone.options.find(x=>x.name===c.optName);
-      if(o) o.quantity=Math.max(0,(o.quantity||0)-c.qty);
-    }else{
-      clone.quantity=Math.max(0,(clone.quantity||0)-c.qty);
-    }
-    try{ await setDoc(doc(collection(db,"items"),item.id),clone); }
-    catch(e){ console.error("재고 차감 실패:",item.name,e); }
+  const optBtn = e.target.closest(".opt-qty-btn");
+  if(optBtn){
+    const it = items.find(x => x.id === optBtn.dataset.iid);
+    if(!it) return;
+    const oi = parseInt(optBtn.dataset.oi);
+    const opt = (it.options || [])[oi];
+    window.openQtyModal(it.id, opt ? opt.name : null, it.name || "", parseInt(optBtn.dataset.qty) || 0);
+    return;
   }
+  const qtyBtn = e.target.closest(".item-qty-btn");
+  if(qtyBtn){
+    const it = items.find(x => x.id === qtyBtn.dataset.iid);
+    if(!it) return;
+    window.openQtyModal(it.id, null, it.name || "", parseInt(qtyBtn.dataset.qty) || 0);
+    return;
+  }
+});
 
-  // 발주 저장
-  try{
-    await addDoc(collection(db,"orders"),{
-      storeName,status:"검토중",
-      orderType:orderType||"",
-      reason:reason?`[${orderType}] ${reason}`:`[${orderType}]`,
-      photos:orderPhotosBase64,
-      weekLabel:getWeekLabel(new Date().toISOString()),
-      createdAt:serverTimestamp(),
-      date:todayDate(),time:nowTime(),
-      items:cart.map(c=>({itemId:c.itemId,itemName:c.itemName,optName:c.optName||null,collection:c.collection,qty:c.qty,unit:c.unit}))
-    });
-  }catch(e){showToast(t("ms_save_err")+": "+e.message,"#f87171");return;}
-  cart=[];orderPhotosBase64=[];openOrderFromExcel=false;updateCartBadge();
-  closeModal("checkout-modal");
-  showToast(t("ms_order_ok"));
-  switchTab("orders");
-};
 
-// ── 렌더 재고 ──
 function renderStock(){
   const total=items.reduce((a,i)=>a+totalQty(i),0);
   const low=items.filter(isLow);
   const years=[...new Set(items.map(i=>String(i.year||"")).filter(Boolean))].sort().reverse();
   const byYear=filterYear==="전체"?items:items.filter(i=>String(i.year||"")==filterYear);
-  // 컬렉션 순서: 신규 컬렉션이 왼쪽 (연도 내림차순 → 컬렉션별 커스텀 순서)
-  // 컬렉션별 최소 _order 기준 정렬
   const collMinOrder={};
   byYear.forEach(i=>{
     const c=i.collection; if(!c)return;
@@ -1038,21 +379,25 @@ function renderStock(){
   const ac=colls.includes(filterColl)?filterColl:"전체";
 
   document.getElementById("stock-stats").innerHTML=[
-    {l:t("stat_items"),v:nu(items.length,"unit_type"),c:"#3b82f6"},
-    {l:t("stat_qty"),v:total.toLocaleString(),c:"#8b5cf6"},
-    {l:t("stat_low"),v:nu(low.length,"unit_type"),c:low.length>0?"#ef4444":"#6b7280",click:true},
+    {l:"전체 상품",v:items.length+"종",c:"#3b82f6"},
+    {l:"총 수량",v:total.toLocaleString(),c:"#8b5cf6"},
+    {l:"재고 부족",v:low.length+"종",c:low.length>0?"#ef4444":"#6b7280",click:true},
   ].map(s=>`<div class="stat-tile" style="cursor:${s.click?"pointer":"default"}" ${s.click?'onclick="window.toggleLowOnly()"':""}>
     <div class="stat-val" style="color:${s.c}">${s.v}</div>
     <div class="stat-lbl">${s.l}${s.click&&showLowOnly?" ✓":""}</div></div>`).join("");
 
   document.getElementById("yr-filters").innerHTML=["전체",...years].map(y=>{
     const on=filterYear===y?"on":"";
-    return`<button class="fbtn ${on}" onclick="window.setFY('${y}')">${y==="전체"?t("filter_all"):y}</button>`;
+    return`<button class="fbtn ${on}" onclick="window.setFY('${y}')">${y}</button>`;
   }).join("");
   document.getElementById("cl-filters").innerHTML=["전체",...colls].map(c=>{
     const on=ac===c?"on":"";
-    return`<button class="fbtn ${on}" onclick="window.setFC('${c}')">${c==="전체"?t("filter_all"):c}</button>`;
+    return`<button class="fbtn ${on}" onclick="window.setFC('${c}')">${c}</button>`;
   }).join("");
+
+  // 옵션 이름 안전하게 저장 (특수문자 대응)
+  window.__opts={};
+  items.forEach(item=>{if(item.options)window.__opts[item.id]=item.options.map(o=>o.name);});
 
   const filtered=items.filter(i=>
     (showLowOnly?isLow(i):true)&&
@@ -1066,7 +411,7 @@ function renderStock(){
   });
 
   if(!Object.keys(grouped).length){
-    document.getElementById("stock-groups").innerHTML=`<div style="text-align:center;padding:50px;font-size:14px;color:#475569">${t("loading")}</div>`;return;
+    document.getElementById("stock-groups").innerHTML=`<div style="text-align:center;padding:50px;font-size:14px;color:#475569">데이터를 불러오는 중...</div>`;return;
   }
 
   // 그룹별 최소 _order 기준 정렬 (프로그램 = 시트 동일 순서)
@@ -1085,32 +430,44 @@ function renderStock(){
       const optRows=hasOpts?item.options.map(o=>{
         const oLow=(o.quantity||0)<10;
         return`<div class="opt-row">
-          <span class="opt-name">${tOpt(o.name)}${o.size?`<span style="display:block;font-size:9px;color:#6366f1;opacity:.8">${o.size}</span>`:""}
+          <span class="opt-name">${o.name}${o.size?`<span style="display:block;font-size:9px;color:#6366f1;opacity:.8">${o.size}</span>`:""}
           </span>
           ${oLow?`<span style="font-size:9px;flex-shrink:0">🔴</span>`:""}
-          <span class="opt-qty" style="color:${oLow?"#ef4444":(isDark?"#e2e8f0":"#111827")};flex-shrink:0">${o.quantity||0}<span class="unit"> ${item.unit==="개"?t("unit_pcs"):(item.unit||t("unit_pcs"))}</span></span>
+          <span class="opt-qty" style="color:${oLow?"#ef4444":(isDark?"#e2e8f0":"#111827")};flex-shrink:0">${o.quantity||0}<span class="unit"> ${item.unit||"개"}</span></span>
         </div>`;
       }).join(""):"";
       return`<div class="item-card${low?" low-stock":""}">
-        <div class="item-img">
+        <div class="item-img" onclick="window.openPhoto('${item.id}')" style="cursor:pointer">
           ${item.imageUrl?`<img src="${item.imageUrl}" alt="${item.name}">`:`<span style="opacity:.15">📷</span>`}
           ${low?`<div class="low-mask"></div>`:""}
         </div>
         <div class="item-body">
-          <div class="item-name">${item.name}</div>
+          <div class="item-name" style="display:flex;align-items:center;gap:4px">
+            ${item.name}
+            <button class="item-name-btn" data-iid="${item.id}" style="padding:1px 5px;border-radius:4px;font-size:9px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);color:#a5b4fc;cursor:pointer;flex-shrink:0">✏️</button>
+          </div>
           ${item.material?`<div class="item-sub">${item.material}</div>`:""}
           ${item.size?`<div class="item-sub" style="color:#6366f1;opacity:.85">${item.size}</div>`:""}
-          <div class="item-qty" style="color:${low?"#ef4444":(isDark?"#e2e8f0":"#111827")}">${qty}<span class="unit"> ${item.unit==="개"?t("unit_pcs"):(item.unit||t("unit_pcs"))}</span></div>
+          <div class="item-qty" style="color:${low?"#ef4444":(isDark?"#e2e8f0":"#111827")}">${qty}<span class="unit"> ${item.unit||"개"}</span></div>
         </div>
-        ${hasOpts?`<div class="opts-panel">${optRows}<button class="btn-cart" onclick="openCartModal('${item.id}')">🛒 ${t("btn_add")}</button></div>`
-        :`<div class="card-actions"><button class="btn-cart" onclick="openCartModal('${item.id}')">🛒 ${t("btn_add")}</button></div>`}
+        ${hasOpts
+          ?`<div class="opts-panel">${item.options.map((o,oi)=>{
+              const oLow=(o.quantity||0)<10;
+              return`<div class="opt-row">
+                <span class="opt-name">${o.name}${o.size?`<br><span style="font-size:9px;color:#6366f1;opacity:.8">${o.size}</span>`:""}</span>
+                ${oLow?`<span style="font-size:9px;flex-shrink:0">🔴</span>`:""}
+                <span class="opt-qty" style="color:${oLow?"#ef4444":(isDark?"#e2e8f0":"#111827")};flex-shrink:0">${o.quantity||0}<span class="unit"> ${item.unit||"개"}</span></span>
+                <button class="opt-qty-btn" data-iid="${item.id}" data-oi="${oi}" data-qty="${o.quantity||0}"
+                  style="padding:2px 7px;border-radius:5px;font-size:9px;font-weight:700;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;flex-shrink:0;cursor:pointer">수정</button>
+              </div>`;}).join("")}</div>`
+          :`<div class="card-actions"><button class="item-qty-btn" data-iid="${item.id}" data-qty="${qty}" style="width:100%;padding:6px 0;border-radius:7px;font-size:10px;font-weight:700;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#64748b;cursor:pointer">수량 수정</button></div>`}
       </div>`;
     }).join("");
     return`<div class="collection-group">
       <div class="coll-header${isCol?" collapsed":""}" onclick="window.toggleGroup('${sGk}')">
         <span>${isCol?"📁":"🗂️"}</span>
         <span style="color:${isDark?"#a5b4fc":"#4f46e5"}">${gk}</span>
-        <span style="margin-left:auto;font-size:10px;color:#6366f1">${nu(gitems.length,"unit_type")} · ${nu(gTotal.toLocaleString(),"unit_pcs")}</span>
+        <span style="margin-left:auto;font-size:10px;color:#6366f1">${gitems.length}종 · ${gTotal.toLocaleString()}개</span>
         <span style="font-size:11px;color:${isDark?"#475569":"#9ca3af"}">${isCol?"▶":"▼"}</span>
       </div>
       ${!isCol?`<div class="items-wrap"><div class="item-grid">${cards}</div></div>`:""}
@@ -1118,348 +475,1135 @@ function renderStock(){
   }}).join("");
 }
 
-// ── 렌더 장바구니 ──
-function renderCart(){
-  const page=document.getElementById("cart-page");
-  if(!cart.length){
-    page.innerHTML=`<div style="text-align:center;padding:60px 20px">
-      <div style="font-size:40px;margin-bottom:12px">🛒</div>
-      <div style="font-size:15px;font-weight:600;margin-bottom:6px">${t("cart_empty")}</div>
-      <div style="font-size:13px;color:#475569;margin-bottom:20px">${t("cart_empty_desc")}</div>
-      <button onclick="window.switchTab('stock')" class="btn-primary" style="width:auto;padding:10px 24px;border-radius:99px">${t("cart_goto_stock")}</button>
-      <div style="margin-top:14px">
-        <label style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:12px;background:rgba(52,211,153,0.1);border:1.5px solid rgba(52,211,153,0.25);color:#34d399;font-size:14px;font-weight:700;cursor:pointer">
-          📂 ${t("cart_excel_open")}
-          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="window.handleOpenOrderExcel(this)">
-        </label>
-        <div style="margin-top:10px">
-          <a href="${ORDER_FORM_URL}" download onclick="showToast(t('form_downloading'),'#60a5fa')"
-            style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:12px;
-                   background:rgba(99,102,241,0.1);border:1.5px solid rgba(99,102,241,0.25);color:#a5b4fc;
-                   font-size:14px;font-weight:700;cursor:pointer;text-decoration:none">
-            📄 ${t("cart_form_dl")}
-          </a>
-        </div>
-      </div>
-    </div>`;
-    return;
-  }
-  const total=cart.reduce((a,c)=>a+c.qty,0);
-  page.innerHTML=`<div style="font-weight:700;font-size:14px;margin-bottom:12px">${t("cart_items")} ${nu(cart.length,"unit_type")} · ${nu(total,"unit_pcs")}</div>`
-    +cart.map((c,i)=>`
-    <div class="cart-item">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:14px">${c.itemName}${c.optName?` [${tOpt(c.optName)}]`:""}</div>
-        <div style="font-size:11px;color:#6366f1;margin-top:2px">${c.collection}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-        <button class="cart-qty-btn" data-idx="${i}" data-delta="-1" title="-1"
-          style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">−</button>
-        <div style="min-width:52px;text-align:center;font-weight:800;font-size:18px">${c.qty}<span class="unit">${c.unit==="개"?t("unit_pcs"):c.unit}</span></div>
-        <button class="cart-qty-btn" data-idx="${i}" data-delta="1" title="+1"
-          style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">＋</button>
-      </div>
-      <button onclick="removeFromCart(${i})" style="padding:4px 10px;border-radius:8px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);color:#f87171;font-size:12px;font-weight:600;flex-shrink:0">${t("btn_remove")}</button>
-    </div>`).join("")
-    +`<button onclick="window.openCheckout()" class="btn-primary" style="margin-top:8px">🚀 ${t("btn_order")} (${nu(total,"unit_pcs")})</button>
-    <label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:12px;background:rgba(52,211,153,0.1);border:1.5px solid rgba(52,211,153,0.25);color:#34d399;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px">
-      📂 ${t("cart_excel_open")}
-      <input type="file" accept=".xlsx,.xls" style="display:none" onchange="window.handleOpenOrderExcel(this)">
-    </label>
-      <a href="${ORDER_FORM_URL}" download onclick="showToast(t('form_downloading'),'#60a5fa')"
-        style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:12px;
-               background:rgba(99,102,241,0.1);border:1.5px solid rgba(99,102,241,0.25);color:#a5b4fc;
-               font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;text-decoration:none;box-sizing:border-box">
-        📄 ${t("cart_form_dl")}
-      </a>
-    <button onclick="clearCart()" style="width:100%;padding:11px;border-radius:12px;background:rgba(255,255,255,0.06);color:#94a3b8;font-weight:600;font-size:14px;margin-top:8px;border:none;cursor:pointer">${t("cart_clear")}</button>
-    <div style="height:80px"></div>`;
-}
-window.removeFromCart=i=>{cart.splice(i,1);updateCartBadge();renderCart();};
-
-// 장바구니 수량 버튼 이벤트 위임
-document.addEventListener("click",e=>{
-  const b=e.target.closest(".cart-qty-btn");
-  if(!b) return;
-  window.changeCartQty(parseInt(b.dataset.idx), parseInt(b.dataset.delta));
-});
-
-// 장바구니 수량 조절 (재고 상한 적용, 0이면 제거)
-window.changeCartQty=(i,delta)=>{
-  const c=cart[i]; if(!c) return;
-  const next=c.qty+delta;
-  if(next<=0){ cart.splice(i,1); updateCartBadge(); renderCart(); return; }
-  // 재고 상한 확인
-  const item=items.find(x=>x.id===c.itemId);
-  let stock=0;
-  if(item){
-    if(c.optName&&item.options){ const o=item.options.find(x=>x.name===c.optName); stock=o?(o.quantity||0):0; }
-    else stock=totalQty(item);
-  }
-  if(delta>0&&next>stock){ showToast(t("ms_over_cur",{n:stock}),"#f87171"); return; }
-  c.qty=next; updateCartBadge(); renderCart();
-};
-window.clearCart=()=>{cart=[];openOrderFromExcel=false;updateCartBadge();renderCart();};
-
-// ── 늦은 접수 여부 확인 (금 18시 이후 ~ 일요일) ──
-function isLateOrder(){
-  const now=new Date();
-  const day=now.getDay(); // 0=일,1=월,...,6=토
-  const hour=now.getHours();
-  // 금요일 18시 이후
-  if(day===5&&hour>=18) return true;
-  // 토요일 전체
-  if(day===6) return true;
-  // 일요일 전체
-  if(day===0) return true;
-  return false;
-}
-
-// 늦은 접수 시 발송 예정일 계산
-function getLateShipDate(){
-  const now=new Date();
-  const day=now.getDay();
-  // 다음 주 월요일 찾기
-  const nextMon=new Date(now);
-  if(day===5) nextMon.setDate(now.getDate()+3);      // 금→다음월
-  else if(day===6) nextMon.setDate(now.getDate()+2); // 토→다음월
-  else if(day===0) nextMon.setDate(now.getDate()+1); // 일→다음월
-  // 그 다음 주 화요일 (다음 월요일 + 8일)
-  const shipTue=new Date(nextMon);shipTue.setDate(nextMon.getDate()+8);
-  return `${shipTue.getMonth()+1}/${shipTue.getDate()}(${(DAY_DISP[LANG]||KO_DAYS)[2]})`;
-}
-
-// ── 수정 가능 여부 확인 ──
-function canEdit(){
-  const now=new Date();
-  const day=now.getDay(); // 0=일
-  const hour=now.getHours();
-  // 일요일 21시 이후 수정 불가
-  if(day===0&&hour>=21) return false;
-  return true;
-}
-
-function getNoticeBanner(){
-  const now=new Date();
-  const day=now.getDay(); // 0=일,1=월,...,6=토
-  const hour=now.getHours();
-
-  // 차주 화요일 계산 (이번 주 월~금 기준)
-  // 이번 주 월요일 찾기
-  const mon=new Date(now);
-  const diffToMon=day===0?1:(day===6?2:(day-1));
-  if(day===0) mon.setDate(now.getDate()+1);
-  else if(day===6) mon.setDate(now.getDate()+2);
-  else mon.setDate(now.getDate()-(day-1));
-
-  // 차주 화요일 = 이번 주 월요일 + 8일
-  const nextTue=new Date(mon);nextTue.setDate(mon.getDate()+8);
-  const _D=DAY_DISP[LANG]||KO_DAYS;
-  const tueFmt=`${nextTue.getMonth()+1}/${nextTue.getDate()}(${_D[2]})`;
-
-  // 다다음 주 화요일
-  const nextNextTue=new Date(nextTue);nextNextTue.setDate(nextTue.getDate()+7);
-  const nextNextFmt=`${nextNextTue.getMonth()+1}/${nextNextTue.getDate()}(${_D[2]})`;
-
-  // 이번 주 금요일
-  const fri=new Date(mon);fri.setDate(mon.getDate()+4);
-  const friFmt=`${fri.getMonth()+1}/${fri.getDate()}(${_D[5]})`;
-
-  if(day===6||day===0){
-    // 토/일 - 다음 주로 집계
-    return{
-      color:"#fbbf24",
-      bg:"rgba(251,191,36,0.08)",
-      border:"rgba(251,191,36,0.2)",
-      icon:"📅",
-      title:t("bn_weekend"),
-      desc:t("bn_now_ship",{d:nextNextFmt})
-    };
-  } else if(day===1||day===2){
-    // 월,화 - 이번 주 발송 마감, 지금 주문은 차차주
-    return{
-      color:"#f87171",
-      bg:"rgba(248,113,113,0.08)",
-      border:"rgba(248,113,113,0.2)",
-      icon:"⚠️",
-      title:t("bn_this_until",{a:friFmt,d:tueFmt}),
-      desc:t("bn_today_new",{d:nextNextFmt})
-    };
-  } else {
-    // 수~금
-    return{
-      color:"#34d399",
-      bg:"rgba(52,211,153,0.08)",
-      border:"rgba(52,211,153,0.2)",
-      icon:"📦",
-      title:t("bn_ship_this",{d:tueFmt}),
-      desc:t("bn_edit_until",{d:friFmt})
-    };
-  }
-}
-
-// ── 수량 수정 모달 (매니저용) ──
-let editOrderId=null,editItemIdx=null;
-window.openOrderEditModal=(orderId,itemIdx,itemName,currentQty,unit)=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
-  editOrderId=orderId;editItemIdx=itemIdx;
-  const modal=document.createElement("div");modal.className="modal-bg";modal.id="order-edit-modal";
+// ── 상품명 수정 모달 ──
+window.openItemNameModal=(itemId,currentName)=>{
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="item-name-modal";
   modal.innerHTML=`<div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">${itemName} — ${t("lbl_qty")}</div>
-    <div style="font-size:22px;font-weight:800;color:#6366f1;margin-bottom:12px">${unit==="개"?nu(currentQty,"unit_pcs"):currentQty+unit}</div>
-    <div class="field-wrap"><div class="field-label">${t("lbl_newqty")}</div>
-      <input id="order-edit-qty" type="number" min="1" value="${currentQty}" class="field-input"
-        onkeydown="if(event.key==='Enter')confirmOrderEdit()">
+    <div class="modal-title">상품명 수정</div>
+    <div class="field-wrap">
+      <div class="field-label">현재 이름</div>
+      <div style="font-size:14px;font-weight:700;color:#6366f1;margin-bottom:12px">${currentName}</div>
+      <div class="field-label">새 이름 *</div>
+      <input id="item-name-input" class="field-input" value="${currentName.replace(/"/g,'&quot;')}"
+        onkeydown="if(event.key==='Enter')window.confirmItemName('${itemId}')">
     </div>
-    <button class="btn-primary" onclick="confirmOrderEdit()">${t("btn_save")}</button>
-    <button class="btn-secondary-sm" onclick="document.getElementById('order-edit-modal').remove()">${t("btn_cancel")}</button>
+    <button class="btn-primary" onclick="window.confirmItemName('${itemId}')">저장</button>
+    <button class="btn-secondary-sm modal-close-btn">취소</button>
   </div>`;
   modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
-  setTimeout(()=>document.getElementById("order-edit-qty")?.focus(),100);
+  setTimeout(()=>{const inp=document.getElementById("item-name-input");inp?.focus();inp?.select();},100);
+};
+window.confirmItemName=async(itemId)=>{
+  const newName=document.getElementById("item-name-input")?.value.trim();
+  if(!newName){showToast("상품명을 입력해주세요","#f87171");return;}
+  const item=items.find(i=>i.id===itemId);if(!item)return;
+  try{
+    await setDoc(doc(collection(db,"items"),itemId),{...item,name:newName});
+    document.getElementById("item-name-modal")?.remove();
+    showToast("✅ 상품명이 수정됐어요!");
+  }catch(e){showToast("오류: "+e.message,"#f87171");}
 };
 
-window.confirmOrderEdit=async()=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
-  const newQty=parseInt(document.getElementById("order-edit-qty")?.value);
-  if(!newQty||newQty<1){showToast(t("ms_bad_qty"),"#f87171");return;}
-  const order=orders.find(o=>o.id===editOrderId);
-  if(!order)return;
-  const oldQty=order.items[editItemIdx].qty;
-  const diff=newQty-oldQty; // 양수면 추가, 음수면 차감
-  // 재고 재조정
-  const it=order.items[editItemIdx];
-  const item=items.find(i=>i.id===it.itemId);
-  if(item&&diff!==0){
+// ── 상품 추가 모달 ──
+let addOptList=[];
+window.openAddItemModal=()=>{
+  addOptList=[];
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="add-item-modal";
+  modal.innerHTML=`<div class="modal-sheet" style="max-height:90dvh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ 상품 추가</div>
+    <div class="field-wrap"><div class="field-label">연도</div><input id="ai-year" class="field-input" placeholder="예: 2026" type="number"></div>
+    <div class="field-wrap"><div class="field-label">컬렉션명 *</div><input id="ai-coll" class="field-input" placeholder="예: VEGGIE"></div>
+    <div class="field-wrap"><div class="field-label">상품명 *</div><input id="ai-name" class="field-input" placeholder="예: PAPER POP"></div>
+    <div class="field-wrap"><div class="field-label">소재</div><input id="ai-mat" class="field-input" placeholder="예: sus, acryl"></div>
+    <div class="field-wrap"><div class="field-label">사이즈</div><input id="ai-size" class="field-input" placeholder="예: 150 x 30"></div>
+    <div class="field-wrap"><div class="field-label">단위</div><input id="ai-unit" class="field-input" placeholder="개" value="개"></div>
+    <div class="field-wrap">
+      <div class="field-label">옵션 (없으면 비워두세요)</div>
+      <div id="ai-opt-list" style="margin-bottom:6px"></div>
+      <div style="display:flex;gap:6px">
+        <input id="ai-opt-name" class="field-input" placeholder="옵션명 예: 한국어" style="flex:1">
+        <input id="ai-opt-qty" class="field-input" placeholder="수량" type="number" style="width:70px">
+        <button onclick="window.addOptItem()" style="padding:8px 12px;border-radius:8px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;font-size:12px;font-weight:600;cursor:pointer">추가</button>
+      </div>
+    </div>
+    <div class="field-wrap" id="ai-qty-wrap">
+      <div class="field-label">수량</div>
+      <input id="ai-qty" class="field-input" placeholder="0" type="number" min="0" value="0">
+    </div>
+    <button class="btn-primary" onclick="window.confirmAddItem()">저장</button>
+    <button class="btn-secondary-sm modal-close-btn">취소</button>
+  </div>`;
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  document.getElementById("ai-opt-name").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();window.addOptItem();}});
+};
+window.addOptItem=()=>{
+  const name=document.getElementById("ai-opt-name")?.value.trim();
+  const qty=parseInt(document.getElementById("ai-opt-qty")?.value)||0;
+  if(!name)return;
+  addOptList.push({name,quantity:qty,size:null});
+  document.getElementById("ai-opt-name").value="";document.getElementById("ai-opt-qty").value="";
+  const el=document.getElementById("ai-opt-list");if(!el)return;
+  el.innerHTML=addOptList.map((o,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;background:rgba(99,102,241,0.08);margin-bottom:4px">
+      <span style="flex:1;font-size:12px;color:#a5b4fc">${o.name}</span>
+      <span style="font-size:12px;font-weight:700">${o.quantity}개</span>
+      <button class="remove-opt-btn" data-idx="${i}" style="padding:2px 7px;border-radius:5px;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171;font-size:11px;cursor:pointer">삭제</button>
+    </div>`).join("");
+  const qw=document.getElementById("ai-qty-wrap");if(qw)qw.style.display=addOptList.length?"none":"block";
+};
+window.removeOptItem=i=>{addOptList.splice(i,1);window.addOptItem&&document.getElementById("ai-opt-name")&&window.addOptItem();};
+window.confirmAddItem=async()=>{
+  const coll=document.getElementById("ai-coll")?.value.trim();
+  const name=document.getElementById("ai-name")?.value.trim();
+  if(!coll||!name){showToast("컬렉션명과 상품명은 필수예요","#f87171");return;}
+  const newItem={
+    id:"item_"+Date.now(),
+    year:document.getElementById("ai-year")?.value.trim()||null,
+    collection:coll,name,
+    material:document.getElementById("ai-mat")?.value.trim()||null,
+    size:document.getElementById("ai-size")?.value.trim()||null,
+    unit:document.getElementById("ai-unit")?.value.trim()||"개",
+    imageUrl:null,_order:items.length,
+    options:addOptList.length?addOptList.map(o=>({...o})):null,
+    quantity:addOptList.length?0:(parseInt(document.getElementById("ai-qty")?.value)||0)
+  };
+  try{
+    await setDoc(doc(collection(db,"items"),newItem.id),newItem);
+    document.getElementById("add-item-modal")?.remove();
+    showToast("✅ "+name+" 추가됐어요!");
+  }catch(e){showToast("오류: "+e.message,"#f87171");}
+};
+
+// 구글 시트 기록
+async function logToSheet(order){
+  try{
+    const now=new Date();
+    const date=now.toLocaleDateString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit"});
+    const time=now.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
+    const payload={
+      date,time,
+      storeName:order.storeName||"",
+      reason:order.reason||"",
+      handler:order.handler||"",
+      status:order.status||"출고완료",
+      items:(order.items||[]).map(it=>({
+        collection:it.collection||"",
+        itemName:it.itemName||"",
+        optName:it.optName||"",
+        qty:it.qty||0,
+        unit:it.unit||"개"
+      }))
+    };
+    // GET 방식으로 전송 (CORS 문제 없음)
+    const url=SHEET_URL+"?data="+encodeURIComponent(JSON.stringify(payload));
+    const res=await fetch(url,{method:"GET",mode:"cors"});
+    const result=await res.json();
+    console.log("시트 기록 완료:", result);
+  }catch(e){
+    console.error("시트 기록 오류:", e.message);
+  }
+}
+
+// 사진 확대 보기
+window.viewPhoto=src=>{
+  const overlay=document.createElement("div");
+  overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out";
+  overlay.innerHTML=`
+    <div style="position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;color:#fff">✕</div>
+    <img src="${src}" style="width:70vw;height:70vh;object-fit:contain;border-radius:10px">
+    <div style="position:absolute;bottom:16px;font-size:12px;color:rgba(255,255,255,0.4)">클릭하면 닫혀요</div>
+  `;
+  overlay.addEventListener("click",()=>overlay.remove());
+  document.body.appendChild(overlay);
+};
+
+const HANDLERS = ["에이도스 스튜디오", "조수연"];
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbz9m-fRC-VM-mbwTlIVcb9HVl0Ff6LHwy5NeyP7vedyzw1PUzhPDAYREcgPE7CtUi-G/exec";
+
+// 담당자 선택 UI 생성
+function handlerSelectHTML(){
+  return `<div class="field-wrap">
+    <div class="field-label">처리 담당자 *</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="handler-select">
+      ${HANDLERS.map(h=>`<label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:all .15s" id="handler-label-${h.replace(/\s/g,'_')}">
+        <input type="radio" name="handler" value="${h}" style="accent-color:#6366f1" onchange="document.querySelectorAll('[id^=handler-label-]').forEach(el=>el.style.borderColor='rgba(255,255,255,0.1)');document.getElementById('handler-label-'+this.value.replace(/ /g,'_')).style.borderColor='#6366f1'">
+        ${h}
+      </label>`).join("")}
+    </div>
+  </div>`;
+}
+function getSelectedHandler(){
+  return document.querySelector('input[name="handler"]:checked')?.value||null;
+}
+
+// 관리자: 승인 모달
+window.openApproveModal=orderId=>{
+  const order=orders.find(o=>o.id===orderId);if(!order)return;
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="approve-modal";
+  const isApproveOnly = order.status==="검토중"||order.status==="반려";
+  modal.innerHTML=`<div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">${isApproveOnly?"✅ 승인 처리":"✅ 출고완료 처리"}</div>
+    <div style="border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div style="font-weight:700;margin-bottom:4px">${order.storeName}</div>
+      ${order.items.map(it=>`<div style="font-size:12px;color:#94a3b8">${it.collection} - ${it.itemName}${it.optName?" ["+it.optName+"]":""} <strong style="color:#e2e8f0">${it.qty}${it.unit}</strong></div>`).join("")}
+    </div>
+    ${handlerSelectHTML()}
+    <button style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:700;font-size:15px;margin-top:6px;border:none;cursor:pointer" onclick="window.confirmApprove('${orderId}')">✅ 승인·출고 확정</button>
+    <button class="btn-secondary-sm modal-close-btn">취소</button>
+  </div>`;
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+};
+
+// 단순 상태 변경 (담당자 불필요)
+// 재고에서 빠져 있는 상태 (발주 시 차감된 채로 유지되는 상태)
+const STOCK_HELD = ["검토중","승인","준비중","출고대기","출고완료"];
+
+// 재고를 되돌리거나 다시 빼는 공통 처리
+async function adjustStock(order, sign){
+  for(const it of (order.items||[])){
+    const item=items.find(i=>i.id===it.itemId); if(!item) continue;
     const clone=JSON.parse(JSON.stringify(item));
+    const q=Number(it.qty)||0;
     if(it.optName&&clone.options){
       const o=clone.options.find(x=>x.name===it.optName);
-      if(o){
-        if(diff>0&&o.quantity<diff){showToast(t("ms_over_add",{n:o.quantity}),"#f87171");return;}
-        o.quantity=Math.max(0,o.quantity-diff);
-      }
+      if(o) o.quantity=Math.max(0,(o.quantity||0)+sign*q);
     }else{
-      if(diff>0&&clone.quantity<diff){showToast(t("ms_over_add",{n:clone.quantity}),"#f87171");return;}
-      clone.quantity=Math.max(0,(clone.quantity||0)-diff);
+      clone.quantity=Math.max(0,(clone.quantity||0)+sign*q);
     }
-    try{await setDoc(doc(collection(db,"items"),item.id),clone);}catch(e){}
+    try{ await setDoc(doc(collection(db,"items"),item.id),clone); }
+    catch(e){ console.error("재고 조정 실패:",item.name,e); }
   }
-  // 주문 수량 업데이트
-  const updatedItems=order.items.map((it,i)=>i===editItemIdx?{...it,qty:newQty}:it);
-  try{
-    await setDoc(doc(collection(db,"orders"),editOrderId),{...order,items:updatedItems},{merge:false});
-    document.getElementById("order-edit-modal")?.remove();
-    showToast(t("ms_qty_ok"));
-  }catch(e){showToast(t("ms_save_err")+": "+e.message,"#f87171");}
+}
+
+// ── 여러 매장 일괄 발주 ──
+// 엑셀 한 파일에 매장별로 시트를 나눠 담아 올리면, 시트마다 출고건을 하나씩 만든다.
+// 매장명은 시트 탭 이름을 그대로 쓴다. (예: 탭 "TOKYO GINZA _ JP" → 매장명 동일)
+// 재고는 매장별로 따로 빼지 않고, 전 매장 합계를 품목마다 한 번에 뺀다.
+const BATCH_SKIP_NAMES = ["합계 수량", "합계", "총 재고", "총계"];
+
+// 시트 한 장 → 발주 줄 목록. 형식이 안 맞으면 null.
+function parseOrderSheet(rows){
+  let hr = -1;
+  for(let i=0;i<Math.min(rows.length,6);i++){
+    const r=rows[i].map(c=>String(c||"").trim());
+    if(r.some(c=>c.includes("상품명")||c.includes("컬렉션"))){ hr=i; break; }
+  }
+  if(hr===-1) return null;
+  const H=rows[hr].map(c=>String(c||"").trim());
+  const ci=H.findIndex(h=>h.includes("컬렉션"));
+  const ni=H.findIndex(h=>h.includes("상품명"));
+  const oi=H.findIndex(h=>h.includes("옵션"));
+  const qi=H.findIndex(h=>h.includes("수량"));
+  if(ni===-1||qi===-1) return null;
+
+  let curColl="",curName="";
+  const out=[];
+  for(let i=hr+1;i<rows.length;i++){
+    const row=rows[i]||[];
+    const coll=String(ci>=0?row[ci]||"":"").trim();
+    const name=String(row[ni]||"").trim();
+    const opt =String(oi>=0?row[oi]||"":"").trim();
+    const qty =parseInt(row[qi])||0;
+    if(coll) curColl=coll;
+    if(name) curName=name;
+    if(!curName) continue;
+    if(BATCH_SKIP_NAMES.indexOf(curName)>=0) continue;   // 합계 줄은 건너뛴다
+    if(qty<=0) continue;
+    out.push({collection:curColl,name:curName,opt,qty});
+  }
+  return out;
+}
+
+// 상품명(+컬렉션)으로 재고 품목 찾기
+function matchStockItem(p){
+  const up=s=>String(s||"").toUpperCase();
+  const item = items.find(i=>up(i.name)===up(p.name) && (!p.collection||up(i.collection)===up(p.collection)))
+            || items.find(i=>up(i.name)===up(p.name));
+  if(!item) return null;
+  let optName=null;
+  if(p.opt && item.options?.length){
+    const o=item.options.find(x=>x.name.includes(p.opt)||p.opt.includes(x.name));
+    optName = o ? o.name : p.opt;
+  }
+  return {item,optName};
+}
+
+function stockOfItem(item,optName){
+  if(optName && item.options?.length){
+    const o=item.options.find(x=>x.name===optName);
+    return o?(o.quantity||0):0;
+  }
+  return totalQty(item);
+}
+
+window.handleBatchOrderExcel = (input) => {
+  const file=input.files[0]; if(!file) return;
+  input.value="";
+  showToast("📂 엑셀 읽는 중...","#60a5fa");
+
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:"array"});
+      const stores=[], badSheets=[];
+
+      wb.SheetNames.forEach(sn=>{
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:""});
+        const parsed=parseOrderSheet(rows);
+        if(parsed===null){ badSheets.push({name:sn,why:"형식"}); return; }
+        if(!parsed.length){ badSheets.push({name:sn,why:"수량 없음"}); return; }
+        stores.push({store:String(sn).trim(),lines:parsed});
+      });
+
+      if(!stores.length){
+        showToast("발주할 매장 시트를 찾지 못했어요","#f87171"); return;
+      }
+
+      // 매장별 매칭 + 전 매장 합계 집계
+      const demand={};            // 품목+옵션 → {item,optName,qty,stores:[]}
+      const notFound={};          // 못 찾은 상품명
+      stores.forEach(s=>{
+        s.matched=[];
+        s.lines.forEach(p=>{
+          const m=matchStockItem(p);
+          if(!m){ (notFound[p.name]=notFound[p.name]||[]).push(s.store); return; }
+          const key=m.item.id+"||"+(m.optName||"");
+          if(!demand[key]) demand[key]={item:m.item,optName:m.optName,qty:0,stores:[]};
+          demand[key].qty+=p.qty;
+          demand[key].stores.push(s.store);
+          s.matched.push({itemId:m.item.id,itemName:m.item.name,optName:m.optName,
+                          collection:m.item.collection,qty:p.qty,unit:m.item.unit||"개",key});
+        });
+      });
+
+      const short=Object.keys(demand).map(k=>{
+        const d=demand[k];
+        const stock=stockOfItem(d.item,d.optName);
+        return {key:k,...d,stock,lack:d.qty-stock};
+      }).filter(d=>d.lack>0);
+
+      showBatchReviewModal(stores,demand,short,notFound,badSheets);
+    }catch(err){
+      showToast("엑셀 읽기 오류: "+err.message,"#f87171");
+    }
+  };
+  reader.readAsArrayBuffer(file);
 };
 
+function showBatchReviewModal(stores,demand,short,notFound,badSheets){
+  const totalQtyAll=Object.keys(demand).reduce((a,k)=>a+demand[k].qty,0);
+  const nfNames=Object.keys(notFound);
+
+  const storeList=stores.map(s=>{
+    const q=s.matched.reduce((a,m)=>a+m.qty,0);
+    return `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-top:1px solid rgba(128,128,128,0.08)">
+      <span style="font-weight:600">${s.store}</span>
+      <span style="color:#94a3b8">${s.matched.length}종 · <b style="color:#6366f1">${q}개</b></span>
+    </div>`;}).join("");
+
+  const shortHtml = short.length ? `
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:6px">⚠️ 재고 부족 ${short.length}종</div>
+      ${short.map((d,i)=>`
+        <div style="padding:8px 10px;border-radius:8px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);margin-bottom:4px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="bshort-${i}" data-key="${d.key}" checked style="accent-color:#6366f1;width:16px;height:16px;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700">${d.item.name}${d.optName?` [${d.optName}]`:""}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px">
+                재고 <b style="color:#f87171">${d.stock}</b> / 요청 <b>${d.qty}</b> · <b style="color:#fbbf24">${d.lack}개 부족</b>
+              </div>
+              <div style="font-size:10px;color:#64748b;margin-top:2px">${d.stores.length}개 매장</div>
+            </div>
+          </label>
+        </div>`).join("")}
+      <div style="font-size:11px;color:#475569;margin-top:4px">✅ 체크한 품목은 <b>모든 매장 발주에서 빠집니다.</b><br>
+        체크를 풀면 요청 수량대로 발주되고 재고는 0으로 내려갑니다.</div>
+    </div>` : "";
+
+  const nfHtml = nfNames.length ? `
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">❌ 재고에 없는 품목 ${nfNames.length}종 (자동 제외)</div>
+      ${nfNames.map(n=>`<div style="font-size:11px;color:#f87171;padding:2px 0">${n} <span style="color:#64748b">— ${notFound[n].length}개 매장</span></div>`).join("")}
+    </div>` : "";
+
+  const badHtml = badSheets.length ? `
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:10px">
+      건너뛴 시트: ${badSheets.map(b=>`${b.name}(${b.why})`).join(", ")}
+    </div>` : "";
+
+  const modal=document.createElement("div");
+  modal.className="modal-bg"; modal.id="batch-order-modal";
+  modal.innerHTML=`<div class="modal-sheet" style="max-height:90dvh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📂 여러 매장 일괄 발주</div>
+    <div style="font-size:13px;color:#34d399;margin-bottom:12px;padding:9px 11px;background:rgba(52,211,153,0.08);border-radius:8px;border:1px solid rgba(52,211,153,0.2)">
+      매장 <b>${stores.length}곳</b> · 총 <b>${totalQtyAll}개</b>
+    </div>
+    <div style="max-height:190px;overflow-y:auto;margin-bottom:12px;padding:0 2px">${storeList}</div>
+    ${shortHtml}${nfHtml}${badHtml}
+    ${handlerSelectHTML()}
+    <div id="batch-progress" style="display:none;font-size:12px;color:#a5b4fc;text-align:center;padding:8px 0"></div>
+    <button class="btn-primary" id="batch-go" onclick="window.confirmBatchOrders()">🚀 ${stores.length}개 매장 발주하기</button>
+    <button class="btn-secondary-sm" onclick="closeModal('batch-order-modal')">취소</button>
+  </div>`;
+  modal.addEventListener("click",e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  modal._stores=stores; modal._demand=demand; modal._short=short;
+}
+
+window.confirmBatchOrders = async () => {
+  const modal=document.getElementById("batch-order-modal"); if(!modal) return;
+  const handler=getSelectedHandler();
+  if(!handler){ showToast("담당자를 선택해주세요","#f87171"); return; }
+
+  const stores=modal._stores||[], demand=modal._demand||{}, short=modal._short||[];
+
+  // 체크된 부족 품목은 전 매장에서 제외
+  const excluded={};
+  short.forEach((d,i)=>{
+    const cb=document.getElementById("bshort-"+i);
+    if(cb&&cb.checked) excluded[d.key]=true;
+  });
+
+  // 매장별 발주 줄에서 제외 품목 빼기
+  const finalStores=stores.map(s=>({
+    store:s.store,
+    items:s.matched.filter(m=>!excluded[m.key])
+                   .map(({key,...rest})=>rest),
+  })).filter(s=>s.items.length);
+
+  if(!finalStores.length){ showToast("발주할 품목이 남지 않았어요","#f87171"); return; }
+
+  const btn=document.getElementById("batch-go");
+  const prog=document.getElementById("batch-progress");
+  btn.disabled=true; btn.style.opacity=".5";
+  prog.style.display="block";
+
+  // ── 1) 재고 차감 (전 매장 합계를 품목마다 한 번에) ──
+  prog.textContent="재고 차감 중...";
+  const agg={};
+  finalStores.forEach(s=>s.items.forEach(it=>{
+    const k=it.itemId+"||"+(it.optName||"");
+    if(!agg[k]) agg[k]={itemId:it.itemId,optName:it.optName,qty:0};
+    agg[k].qty+=it.qty;
+  }));
+  const byItem={};
+  Object.keys(agg).forEach(k=>{
+    const a=agg[k];
+    (byItem[a.itemId]=byItem[a.itemId]||[]).push(a);
+  });
+
+  let stockFail=0;
+  for(const itemId of Object.keys(byItem)){
+    const item=items.find(i=>i.id===itemId); if(!item) continue;
+    const clone=JSON.parse(JSON.stringify(item));
+    byItem[itemId].forEach(a=>{
+      if(a.optName&&clone.options){
+        const o=clone.options.find(x=>x.name===a.optName);
+        if(o) o.quantity=Math.max(0,(o.quantity||0)-a.qty);
+      }else{
+        clone.quantity=Math.max(0,(clone.quantity||0)-a.qty);
+      }
+    });
+    try{ await setDoc(doc(collection(db,"items"),itemId),clone); }
+    catch(e){ stockFail++; console.error("재고 차감 실패",item.name,e); }
+  }
+
+  // ── 2) 매장별 출고건 만들기 ──
+  const now=new Date();
+  const weekLabel=getWeekLabel(now.toISOString());
+  let made=0, failed=0;
+  for(let i=0;i<finalStores.length;i++){
+    const s=finalStores[i];
+    prog.textContent=`발주 만드는 중... ${i+1} / ${finalStores.length}`;
+    try{
+      await addDoc(collection(db,"orders"),{
+        storeName:s.store,
+        status:"승인",
+        orderType:"오픈",
+        reason:"[오픈] 일괄 발주",
+        weekLabel,
+        createdAt:serverTimestamp(),
+        date:todayDate(), time:nowTime(),
+        handler, handledAt:now.toISOString(),
+        items:s.items,
+      });
+      made++;
+    }catch(e){ failed++; console.error("발주 생성 실패",s.store,e); }
+  }
+
+  modal.remove();
+  let msg=`🚀 ${made}개 매장 발주 완료`;
+  if(failed) msg+=` (실패 ${failed})`;
+  if(stockFail) msg+=` · 재고 차감 실패 ${stockFail}건`;
+  showToast(msg, failed||stockFail ? "#fbbf24" : "#34d399");
+  switchTab("orders");
+};
+
+window.setStatus=async(orderId,newStatus)=>{
+  const order=orders.find(o=>o.id===orderId);if(!order)return;
+  const wasHeld = STOCK_HELD.includes(order.status);   // 지금 재고에서 빠져 있나
+  const willHold = STOCK_HELD.includes(newStatus);     // 바꾼 뒤에도 빠져 있어야 하나
+  let note="";
+  try{
+    // 취소·반려 → 진행 상태로 되돌리면 재고를 다시 뺀다
+    if(!wasHeld && willHold){ await adjustStock(order,-1); note=" 재고가 차감됐어요."; }
+    // 진행 상태 → 취소·반려로 바꾸면 재고를 되돌린다
+    else if(wasHeld && !willHold){ await adjustStock(order,+1); note=" 재고가 복원됐어요."; }
+
+    await setDoc(doc(collection(db,"orders"),orderId),{...order,status:newStatus},{merge:false});
+    showToast(`🔄 ${newStatus}으로 변경됐어요.${note}`);
+  }catch(e){showToast("오류: "+e.message,"#f87171");}
+};
+
+window.confirmApprove=async(orderId)=>{
+  const handler=getSelectedHandler();
+  if(!handler){showToast("담당자를 선택해주세요","#f87171");return;}
+  const order=orders.find(o=>o.id===orderId);if(!order)return;
+  const isApproveOnly = order.status==="검토중"||order.status==="반려";
+  const newStatus = isApproveOnly?"승인":"출고완료";
+  // 반려·취소 건을 되살리는 경우 재고를 다시 차감한다
+  // (그 상태에서는 이미 복원돼 있으므로)
+  const needDeduct = !STOCK_HELD.includes(order.status) && STOCK_HELD.includes(newStatus);
+  try{
+    if(needDeduct) await adjustStock(order,-1);
+    await setDoc(doc(collection(db,"orders"),orderId),{...order,status:newStatus,handler,handledAt:new Date().toISOString()},{merge:false});
+    document.getElementById("approve-modal")?.remove();
+    showToast(isApproveOnly?`✅ ${handler}님이 승인했어요.`:`✅ ${handler}님이 출고완료 처리했어요.`);
+    // 출고완료 시 구글 시트에 기록 (재고 차감은 발주 시점에 이미 됨)
+    if(!isApproveOnly){
+      logToSheet({...order, status:"출고완료", handler});
+    }
+  }catch(e){showToast("오류: "+e.message,"#f87171");}
+};
+
+// 관리자: 반려 모달
+window.openRejectModal=orderId=>{
+  const order=orders.find(o=>o.id===orderId);if(!order)return;
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="reject-modal";
+  modal.innerHTML=`<div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">❌ 발주 반려</div>
+    <div style="border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div style="font-weight:700;margin-bottom:4px">${order.storeName}</div>
+      ${order.items.map(it=>`<div style="font-size:12px;color:#94a3b8">${it.collection} - ${it.itemName}${it.optName?" ["+it.optName+"]":""} <strong style="color:#e2e8f0">${it.qty}${it.unit}</strong></div>`).join("")}
+    </div>
+    ${handlerSelectHTML()}
+    <div class="field-wrap">
+      <div class="field-label">반려 사유 * (매니저에게 표시돼요)</div>
+      <textarea id="reject-reason" class="field-input" rows="3" placeholder="예: 현재 재고 충분, 추가 확인 필요 등" style="resize:none;line-height:1.5"></textarea>
+    </div>
+    <button style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-weight:700;font-size:15px;margin-top:6px;border:none;cursor:pointer" onclick="window.confirmReject('${orderId}')">반려 처리</button>
+    <button class="btn-secondary-sm modal-close-btn">돌아가기</button>
+  </div>`;
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById("reject-reason")?.focus(),100);
+};
+window.confirmReject=async(orderId)=>{
+  const handler=getSelectedHandler();
+  const reason=document.getElementById("reject-reason")?.value.trim();
+  if(!handler){showToast("담당자를 선택해주세요","#f87171");return;}
+  if(!reason){showToast("반려 사유를 입력해주세요","#f87171");return;}
+  const order=orders.find(o=>o.id===orderId);if(!order)return;
+  // 재고에서 빠져 있던 상태라면 되돌린다 (중복 복원 방지)
+  if(STOCK_HELD.includes(order.status)) await adjustStock(order,+1);
+  try{
+    await setDoc(doc(collection(db,"orders"),orderId),{...order,status:"반려",rejectReason:reason,handler,handledAt:new Date().toISOString()},{merge:false});
+    document.getElementById("reject-modal")?.remove();
+    showToast(`❌ ${handler}님이 반려 처리했어요. 재고가 복원됐어요.`);
+  }catch(e){showToast("오류: "+e.message,"#f87171");}
+};
+
+// 관리자: 출고요청 취소
+// 관리자: 매장명 수정
+let editStoreOrderId=null;
+// ── 매장명 자동완성 데이터 ──
+const STORE_LIST = ["하우스 성수 _ KR", "하우스 도산 _ KR", "신사 FS _ KR", "홍대 FS _ KR", "롯데월드타워 (잠실) _ KR", "신세계 스타필드 (하남) _ KR", "롯데 (동탄) _ KR", "현대 (여의도) _ KR", "롯데 (명동) _ KR", "롯데 (서면) _ KR", "신세계 (센텀) _ KR", "신세계 (대구) _ KR", "신세계 (경기) _ KR", "신세계 (의정부) _ KR", "신세계 (명동) _ KR", "신세계 (강남) _ KR", "신세계 (대전) _ KR", "신세계 (광주) _ KR", "현대 (무역) _ KR", "현대 (대구) _ KR", "현대 (판교) _ KR", "갤러리아 (광교) _ KR", "갤러리아 (압구정) _ KR", "롯데 (잠실) _ KR", "신세계 (천안아산) _ KR", "현대 (압구정) _ KR", "갤러리아 (대전) _ KR", "현대 (목동) _ KR", "롯데 소공 면세 _ KR", "롯데 월드타워 면세 _ KR", "신세계 명동 면세 _ KR", "현대 면세 (인천공항 T1) _ KR", "신라 면세 (인청공항 T2) _ KR", "신라 서울 면세 _ KR", "신라 제주 면세 _ KR", "롯데 제주 면세 _ KR", "HAUS SHANGHAI _ CN", "TAIKOO-S BEIJING _ CN", "TAIKOO CHENGDU _ CN", "HANGZHOU TOWER _ CN", "DEJI NANJING _ CN", "SKP BEIJING _ CN", "HANKYU NINGBO _ CN", "TAIKOOLI SHANGHAI _ CN", "SKP CHENGDU _ CN", "MIXC XIAMEN _ CN", "PC GUANGZHOU _ CN", "IFC SHANGHAI _ CN", "TAIKOO GUANGZHOU _ CN", "SKP XIAN _ CN", "MIXC SHENYANG _ CN", "CHANGSHA IFS _ CN", "HANGZHOU MIXC _ CN", "HAUS SHENZHEN _ CN", "HAINAN SANYA _ CN", "CHONGQING MIXC _ CN", "SHANGHAI XINTIANDI _ CN", "SHANGHAI OFFICE _ CN", "NEWYORK _ USA", "LA COSTAMESA _ USA", "LA FS _ USA", "SAN JOSE _ USA", "HOUSTON _ USA", "NEWJERSEY _ USA", "LAS VEGAS _ USA", "USE OFFICE _ USA", "TORONTO _ CANADA", "ION _ SG", "MBS _ SG", "HABOUR CITY _ HK", "CAUSEWAY _ HK", "BREEZE TAIWAN _ TW", "THAICHUNG _ TW", "THE DUBAI MALL _ DUBAI", "SYDNEY AIR _ AUS", "MELBOURNE _ AUS", "DAVID JONES _ AUS", "BLUEBELL OFFICE _ AUS", "SELFIDGE LONDON _ UK", "10CC _ ITALY", "EMQUARTIER _ THAI", "SIAM-PARAGON _ THAI", "ICON SIAM _ THAI", "SHANGRI-LA _ PHILIPPINES", "TRX _ MAL", "KLCC _ MAL", "OSAKA HANKYU _ JP", "TOKYO AOYAMA _ JP", "TOKYO HANKYU _ JP", "TOKYO GINZA _ JP", "TOKYO HARAJUKU _ JP", "OSAKA PARCO _ JP", "PARIS _ FR"];
+
+function initStoreAutocomplete(inputId){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const wrap = input.parentElement;
+  wrap.style.position = "relative";
+  let dd = document.getElementById(inputId+"-dd");
+  if(!dd){
+    dd = document.createElement("div");
+    dd.id = inputId+"-dd";
+    dd.style.cssText = "position:absolute;top:100%;left:0;right:0;background:#1e2235;border:1px solid rgba(99,102,241,0.3);border-radius:10px;max-height:180px;overflow-y:auto;z-index:999;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4)";
+    wrap.appendChild(dd);
+  }
+  input.addEventListener("input", ()=>{
+    const q=input.value.trim().toLowerCase();
+    if(!q){dd.style.display="none";return;}
+    const matches=STORE_LIST.filter(s=>s.toLowerCase().includes(q));
+    if(!matches.length){dd.style.display="none";return;}
+    dd.innerHTML=matches.slice(0,8).map(s=>
+      `<div onclick="document.getElementById('${inputId}').value='${s.replace(/'/g,"\'")}';document.getElementById('${inputId}-dd').style.display='none'"
+        style="padding:10px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05)"
+        onmouseover="this.style.background='rgba(99,102,241,0.15)'" onmouseout="this.style.background=''">${s}</div>`
+    ).join("");
+    dd.style.display="block";
+  });
+  document.addEventListener("click",e=>{if(!wrap.contains(e.target))dd.style.display="none";});
+}
+
+window.openStoreNameEditModal=(orderId,currentName)=>{
+  editStoreOrderId=orderId;
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="store-edit-modal";
+  modal.innerHTML=`<div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">매장명 수정</div>
+    <div class="field-wrap">
+      <div class="field-label">매장명</div>
+      <input id="store-edit-input" type="text" value="${currentName.replace(/"/g,"&quot;")}" class="field-input"
+        onkeydown="if(event.key==='Enter')window.confirmStoreNameEdit()">
+    </div>
+    <button class="btn-primary" onclick="window.confirmStoreNameEdit()">수정하기</button>
+    <button class="btn-secondary-sm modal-close-btn">취소</button>
+  </div>`;
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>{
+    const inp=document.getElementById("store-edit-input");
+    inp?.focus();inp?.select();
+    initStoreAutocomplete("store-edit-input");
+  },100);
+};
+window.confirmStoreNameEdit=async()=>{
+  const newName=document.getElementById("store-edit-input")?.value.trim();
+  if(!newName){showToast("매장명을 입력해주세요","#f87171");return;}
+  const order=orders.find(o=>o.id===editStoreOrderId);
+  if(!order)return;
+  try{
+    await setDoc(doc(collection(db,"orders"),editStoreOrderId),{...order,storeName:newName},{merge:false});
+    document.getElementById("store-edit-modal")?.remove();
+    showToast("매장명이 수정됐어요 ✅");
+  }catch(e){showToast("저장 오류: "+e.message,"#f87171");}
+};
+
+window.openCancelModal=orderId=>{
+  const order=orders.find(o=>o.id===orderId);if(!order)return;
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="cancel-modal";
+  modal.innerHTML=`<div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🚫 출고 요청 취소</div>
+    <div style="border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <div style="font-weight:700;margin-bottom:6px">${order.storeName}</div>
+      ${order.items.map(it=>`<div style="font-size:12px;color:#94a3b8">${it.collection} - ${it.itemName}${it.optName?" ["+it.optName+"]":""} <strong style="color:#e2e8f0">${it.qty}${it.unit}</strong></div>`).join("")}
+    </div>
+    <div class="field-wrap">
+      <div class="field-label">취소 사유 * (매니저에게 표시돼요)</div>
+      <textarea id="cancel-reason" class="field-input" rows="3" placeholder="예: 해당 매장 재고 충분, 발송 일정 변경 등" style="resize:none;line-height:1.5"></textarea>
+    </div>
+    <button style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-weight:700;font-size:15px;margin-top:6px;border:none;cursor:pointer" onclick="window.confirmCancel('${orderId}')">취소 처리</button>
+    <button class="btn-secondary-sm modal-close-btn">돌아가기</button>
+  </div>`;
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById("cancel-reason")?.focus(),100);
+};
+window.confirmCancel=async(orderId)=>{
+  const reason=document.getElementById("cancel-reason")?.value.trim();
+  if(!reason){showToast("취소 사유를 입력해주세요","#f87171");return;}
+  const order=orders.find(o=>o.id===orderId);if(!order)return;
+  // 재고에서 빠져 있던 상태라면 되돌린다 (반려·취소 건은 이미 복원돼 있으므로 건너뜀)
+  if(STOCK_HELD.includes(order.status)) await adjustStock(order,+1);
+  try{
+    await setDoc(doc(collection(db,"orders"),orderId),{...order,status:"취소",cancelReason:reason,canceledAt:new Date().toISOString()});
+    document.getElementById("cancel-modal")?.remove();
+    showToast("🚫 취소됐어요. 재고가 복원됐어요.");
+  }catch(e){showToast("오류: "+e.message,"#f87171");}
+};
+
+// 수량 수정 모달
+let qtyItemId=null,qtyOptName=null;
+window.openQtyModal=(itemId,optName,itemName,current)=>{
+  qtyItemId=itemId;qtyOptName=optName;
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="qty-modal-dyn";
+  modal.innerHTML=`<div class="modal-sheet"><div class="modal-handle"></div>
+    <div class="modal-title">${optName?`${itemName} [${optName}]`:itemName} 수량 수정</div>
+    <div style="font-size:14px;color:#475569;margin-bottom:16px">현재 수량: <strong style="color:#6366f1">${current}개</strong></div>
+    <div class="field-wrap">
+      <div class="field-label">새 수량</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <button onclick="const el=document.getElementById('qty-new-val');el.value=Math.max(0,parseInt(el.value||0)-1)"
+          style="width:40px;height:40px;border-radius:10px;font-size:20px;font-weight:300;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:#e2e8f0;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">−</button>
+        <input id="qty-new-val" type="number" min="0" value="${current}" class="field-input"
+          style="text-align:center;font-size:22px;font-weight:800;padding:10px"
+          onkeydown="if(event.key==='Enter')confirmQtyModal()">
+        <button onclick="const el=document.getElementById('qty-new-val');el.value=parseInt(el.value||0)+1"
+          style="width:40px;height:40px;border-radius:10px;font-size:20px;font-weight:300;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:#e2e8f0;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">＋</button>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="confirmQtyModal()">저장</button>
+    <button class="btn-secondary-sm modal-close-btn">취소</button>
+  </div>`;
+  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById("qty-new-val")?.focus(),100);
+};
+window.confirmQtyModal=async()=>{
+  const val=parseInt(document.getElementById("qty-new-val")?.value);
+  if(isNaN(val)||val<0){showToast("올바른 수량을 입력해주세요","#f87171");return;}
+  const item=items.find(i=>i.id===qtyItemId);if(!item)return;
+  const clone=JSON.parse(JSON.stringify(item));
+  if(qtyOptName&&clone.options){const o=clone.options.find(x=>x.name===qtyOptName);if(o)o.quantity=val;}
+  else clone.quantity=val;
+  // 수정 전 수량 (이력에 남긴다)
+  const before = qtyOptName && item.options
+    ? (item.options.find(x=>x.name===qtyOptName)?.quantity ?? 0)
+    : (item.quantity ?? 0);
+  try{
+    await setDoc(doc(collection(db,"items"),item.id),clone);
+    // 수량 변경 이력 저장 — 나중에 재고가 안 맞을 때 추적할 수 있게
+    try{
+      await addDoc(collection(db,"stockLogs"),{
+        itemId:item.id, itemName:item.name||"", collection:item.collection||"",
+        optName:qtyOptName||null,
+        before:before, after:val, diff:val-before,
+        type:"수동수정",
+        date:todayDate(), time:nowTime(),
+        createdAt:serverTimestamp(),
+      });
+    }catch(e){ console.error("이력 저장 실패:",e); }
+    document.getElementById("qty-modal-dyn")?.remove();
+    showToast("수량 수정됐어요 ✅");
+  }
+  catch(e){showToast("오류: "+e.message,"#f87171");}
+};
+
+// 사진 업로드
+let photoTargetId=null;
+const photoInput=document.createElement("input");photoInput.type="file";photoInput.accept="image/*";
+photoInput.style.display="none";document.body.appendChild(photoInput);
+
+// 이미지 압축 함수
+function compressItemImage(file, maxW=800, quality=0.75){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement("canvas");
+        let w=img.width, h=img.height;
+        if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+        canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle="#ffffff";
+        ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        let dataUrl=canvas.toDataURL("image/jpeg",quality);
+        // 900KB 넘으면 품질 낮춰서 재압축
+        let q=quality;
+        while(dataUrl.length>900000 && q>0.3){
+          q-=0.1;
+          dataUrl=canvas.toDataURL("image/jpeg",q);
+        }
+        resolve(dataUrl);
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+photoInput.addEventListener("change",async e=>{
+  const file=e.target.files[0];
+  if(!file||!photoTargetId){e.target.value="";return;}
+  showToast("📷 사진 압축 중...","#60a5fa");
+  try{
+    const compressed=await compressItemImage(file);
+    const sizeKB=Math.round(compressed.length/1024);
+    if(compressed.length>1000000){
+      showToast("사진 용량이 너무 커요. 더 작은 사진을 사용해주세요.","#f87171");
+      photoTargetId=null;e.target.value="";return;
+    }
+    const item=items.find(i=>i.id===photoTargetId);
+    if(item){
+      await setDoc(doc(collection(db,"items"),item.id),{...item,imageUrl:compressed});
+      showToast(`✅ 사진 업로드 완료 (${sizeKB}KB)`);
+    }
+  }catch(err){
+    showToast("사진 업로드 오류: "+err.message,"#f87171");
+  }
+  photoTargetId=null;e.target.value="";
+});
+window.openPhoto=(id)=>{photoTargetId=id;photoInput.click();};
+
+
 // ── 렌더 출고요청 ──
+
+// ══════════ 쉬핑 리스트 다운로드 ══════════
+// 구글 시트의 [쉬핑 양식]을 그대로 복사해 데이터를 채운 뒤 엑셀로 받아온다.
+// 테두리 · 용지 설정 · 인쇄 영역까지 시트와 동일하게 나온다.
+const SHIP_TPL_URL = "https://script.google.com/macros/s/AKfycbxuRzzvzd9WH0e0uPmpinpTHSOGJdkB22eB8ojEUtIKaBn_wO_C8S4eaFJY3iKJBxiRGQ/exec";
+
+window.downloadShippingList = async (orderId) => {
+  const order = orders.find(o => o.id === orderId);
+  if(!order) return;
+  if(SHIP_TPL_URL.indexOf("@@") === 0){ showToast("쉬핑 양식 주소가 설정되지 않았어요","#f87171"); return; }
+
+  showToast("✈️ 쉬핑 리스트 만드는 중...","#60a5fa");
+
+  const payload = {
+    store: order.storeName || "",
+    date: order.date || "",
+    items: (order.items||[]).map(it => ({
+      itemId: it.itemId, itemName: it.itemName, optName: it.optName || null,
+      collection: it.collection || "", qty: Number(it.qty)||0, unit: it.unit || "개",
+    })),
+  };
+
+  try{
+    const url = SHIP_TPL_URL + "?action=shipping&data=" + encodeURIComponent(JSON.stringify(payload));
+    const res = await fetch(url);
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || "알 수 없는 오류");
+
+    // base64 → 파일
+    const bin = atob(json.b64);
+    const buf = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) buf[i] = bin.charCodeAt(i);
+    const blob = new Blob([buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = json.filename || "Shipping_list.xlsx";
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    // 임시 파일 정리가 실패하면 알려준다 (구글 드라이브에 파일이 쌓이는 것을 막기 위해)
+    const cleanFailed = json.cleanup && String(json.cleanup).indexOf("failed") === 0;
+    let msg = json.missing
+      ? "✈️ 다운로드 완료 (쉬핑 정보 미입력: " + json.missing + "품목)"
+      : "✈️ 쉬핑 리스트 다운로드 완료";
+    if(cleanFailed) msg += " ⚠️ 임시 파일 정리 실패";
+    showToast(msg, cleanFailed ? "#f87171" : (json.missing ? "#fbbf24" : "#34d399"));
+    if(cleanFailed) console.warn("임시 파일 정리 실패:", json.cleanup);
+  }catch(err){
+    showToast("쉬핑 리스트 오류: " + err.message, "#f87171");
+  }
+};
+
+// 출고 지시서 출력
+window.printOrder=(orderId)=>{
+  const order=orders.find(o=>o.id===orderId);
+  if(!order)return;
+  const rows=order.items.map(it=>{
+    const item=items.find(i=>i.id===it.itemId)||{};
+    let size="-",material="-";
+    if(it.optName&&item.options){const opt=item.options.find(o=>o.name===it.optName);size=opt?.size||item.size||"-";}
+    else size=item.size||"-";
+    material=item.material||"-";
+    return {collection:it.collection||"-",name:it.itemName||"-",opt:it.optName||"-",size,material,qty:it.qty,unit:it.unit||"개"};
+  });
+  const now=new Date();
+  const dateStr=now.getFullYear()+"."+(now.getMonth()+1).toString().padStart(2,"0")+"."+now.getDate().toString().padStart(2,"0");
+  const win=window.open("","_blank","width=820,height=680");
+  win.document.write("<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>출고 지시서 - "+order.storeName+"</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;padding:40px;color:#111;font-size:13px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:14px;border-bottom:2px solid #111}.title{font-size:22px;font-weight:800}.meta{text-align:right;font-size:11px;color:#555;line-height:1.9}.info-row{display:flex;gap:36px;margin-bottom:22px}.info-item{display:flex;flex-direction:column;gap:3px}.info-label{font-size:10px;color:#666;font-weight:700;text-transform:uppercase}.info-value{font-size:14px;font-weight:700}table{width:100%;border-collapse:collapse;margin-bottom:24px}th{background:#111;color:#fff;padding:9px 12px;font-size:11px;font-weight:700;text-align:left}td{padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px}tr:nth-child(even) td{background:#f9fafb}.sign-area{display:flex;gap:32px;margin-top:30px}.sign-box{flex:1;border-top:1px solid #111;padding-top:8px;font-size:11px;color:#666;text-align:center;padding-bottom:40px}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:11px;color:#888}@media print{button{display:none!important}body{padding:20px}}</style></head><body>");
+  win.document.write("<div class='header'><div><div class='title'>출고 지시서</div><div style='font-size:11px;color:#666;margin-top:3px'>DELIVERY ORDER</div></div><div class='meta'><div>발행일: "+dateStr+"</div><div>상태: "+order.status+"</div>"+(order.handler?"<div style='font-weight:700;margin-top:2px'>"+order.handler+"</div>":"")+"</div></div>");
+  win.document.write("<div class='info-row'><div class='info-item'><div class='info-label'>매장명</div><div class='info-value'>"+order.storeName+"</div></div><div class='info-item'><div class='info-label'>요청일</div><div class='info-value'>"+(order.date||"-")+"</div></div>"+(order.reason?"<div class='info-item'><div class='info-label'>요청 사유</div><div class='info-value' style='font-size:12px;font-weight:600'>"+order.reason+"</div></div>":"")+"</div>");
+  win.document.write("<table><thead><tr><th style='width:15%'>컬렉션</th><th style='width:22%'>재고명</th><th style='width:13%'>옵션</th><th style='width:20%'>사이즈</th><th style='width:15%'>소재</th><th style='width:9%;text-align:center'>수량</th></tr></thead><tbody>");
+  rows.forEach(r=>{
+    win.document.write("<tr><td>"+r.collection+"</td><td style='font-weight:600'>"+r.name+"</td><td style='color:#555'>"+(r.opt==="-"||r.opt==="null"?"-":r.opt)+"</td><td style='font-size:11px;color:#555'>"+r.size+"</td><td style='font-size:11px;color:#555'>"+r.material+"</td><td style='text-align:center;font-weight:800;font-size:13px'>"+r.qty+r.unit+"</td></tr>");
+  });
+  win.document.write("</tbody></table><div class='sign-area'><div class='sign-box'>담당자 확인</div><div class='sign-box'>출고 담당</div><div class='sign-box'>수령 확인</div></div><div class='footer'><span>EIDOS STUDIO</span><span>본 문서는 출고 지시 목적으로만 사용됩니다</span></div><div style='text-align:center;margin-top:20px'><button onclick='window.print()' style='padding:10px 30px;background:#111;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer'>🖨️ 인쇄하기</button></div></body></html>");
+  win.document.close();
+  setTimeout(()=>win.print(),400);
+};
+
+// 관리자: 출고요청 완전 삭제
+window.deleteOrder=async(orderId)=>{
+  const order=orders.find(o=>o.id===orderId);
+  if(!order){showToast("주문을 찾을 수 없어요","#f87171");return;}
+  const label=`${order.storeName} (${order.date||""})`;
+  // 재고에서 빠져 있는 상태면 삭제 시 되돌려야 한다
+  let held=STOCK_HELD.includes(order.status);
+
+  // 출고완료 건은 이미 물건이 나갔을 수 있으므로 복원 여부를 따로 묻는다
+  if(order.status==="출고완료"){
+    held=confirm("출고완료된 요청입니다.\n"+label
+      +"\n\n재고를 복원할까요?"
+      +"\n\n[확인] 잘못 처리된 건 — 재고를 되돌립니다"
+      +"\n[취소] 실제 출고된 건 — 재고를 그대로 둡니다");
+  }
+
+  const msg="이 출고요청을 완전히 삭제할까요?\n"+label+"\n상태: "+order.status
+    +(held?"\n\n※ 차감된 재고가 복원됩니다.":"\n\n※ 재고는 변동되지 않습니다.")
+    +"\n\n삭제하면 되돌릴 수 없어요.";
+  if(!confirm(msg))return;
+  try{
+    if(held) await adjustStock(order,+1);        // 재고 복원
+    await deleteDoc(doc(collection(db,"orders"),orderId));
+    showToast(held?"🗑️ 삭제됐어요. 재고가 복원됐어요.":"🗑️ 삭제됐어요.");
+  }catch(e){showToast("삭제 오류: "+e.message,"#f87171");}
+};
+
+// 스크롤하면 드롭다운을 닫는다 (화면 기준으로 떠 있어 위치가 어긋나므로)
+document.addEventListener("scroll",()=>{
+  document.querySelectorAll(".status-dropdown").forEach(el=>{ el.style.display="none"; });
+},true);
+window.addEventListener("resize",()=>{
+  document.querySelectorAll(".status-dropdown").forEach(el=>{ el.style.display="none"; });
+});
+
+window.toggleStatusDropdown=(orderId)=>{
+  const dd=document.getElementById("dd-"+orderId);
+  const btn=document.getElementById("status-btn-"+orderId);
+  if(!dd||!btn)return;
+  const isOpen=dd.style.display==="block";
+  document.querySelectorAll(".status-dropdown").forEach(el=>el.style.display="none");
+  if(isOpen) return;
+
+  // 버튼 위치를 재서 화면 안에 들어오도록 띄운다 (잘림 방지)
+  dd.style.display="block";
+  const r=btn.getBoundingClientRect();
+  const w=dd.offsetWidth||150, h=dd.offsetHeight||200;
+  let left=r.right-w;                                  // 버튼 오른쪽에 맞춤
+  if(left<8) left=8;
+  if(left+w>window.innerWidth-8) left=window.innerWidth-w-8;
+  let top=r.bottom+4;
+  if(top+h>window.innerHeight-8) top=Math.max(8,r.top-h-4);   // 아래 공간 없으면 위로
+  dd.style.left=left+"px";
+  dd.style.top=top+"px";
+};
+
+// 상태별 스타일
+const STATUS_STYLE = {
+  "검토중":  {bg:"rgba(139,92,246,0.15)", color:"#a78bfa", border:"rgba(139,92,246,0.3)", icon:"🔍"},
+  "승인":    {bg:"rgba(59,130,246,0.15)",  color:"#60a5fa", border:"rgba(59,130,246,0.3)",  icon:"✅"},
+  "준비중":  {bg:"rgba(251,191,36,0.15)", color:"#fbbf24", border:"rgba(251,191,36,0.3)", icon:"🔄"},
+  "출고대기":{bg:"rgba(249,115,22,0.15)", color:"#fb923c", border:"rgba(249,115,22,0.3)", icon:"📦"},
+  "출고완료":{bg:"rgba(52,211,153,0.15)", color:"#34d399", border:"rgba(52,211,153,0.3)", icon:"✅"},
+  "반려":    {bg:"rgba(239,68,68,0.15)",  color:"#ef4444", border:"rgba(239,68,68,0.3)",  icon:"❌"},
+  "취소":    {bg:"rgba(100,116,139,0.15)",color:"#64748b", border:"rgba(100,116,139,0.3)",icon:"🚫"},
+};
+
 let orderSearch="";
 function matchesOrderSearch(o,q){
   if(!q) return true;
   const hay=[
     o.storeName||"",
     o.reason||"",
+    o.handler||"",
     ...(o.items||[]).map(it=>`${it.itemName||""} ${it.optName||""} ${it.collection||""}`)
   ].join(" ").toLowerCase();
-  // 공백으로 나눈 모든 단어가 포함되어야 매칭
   return q.toLowerCase().split(/\s+/).filter(Boolean).every(w=>hay.includes(w));
 }
+
 function renderOrders(){
-  const notice=getNoticeBanner();
-  const editable=canEdit();
   const currentWeek=getWeekLabel(new Date().toISOString());
+  const now=new Date();
+  const currentMonthKey=now.getFullYear()+"-"+(now.getMonth()+1);
+  const currentYearKey=""+now.getFullYear();
   const q=orderSearch.trim();
   const searching=!!q;
   const filteredOrders=orders.filter(o=>matchesOrderSearch(o,q));
-  const grouped={};
+  const banner=searching
+    ? "<div style=\"background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#a5b4fc\">🔍 \""+escH(q)+"\" 검색 결과 <strong>"+filteredOrders.length+"건</strong></div>"
+    : "";
+
+  const weekGrouped={};
   filteredOrders.forEach(o=>{
     const lbl=o.weekLabel||getWeekLabel(o.date||new Date().toISOString());
-    if(!grouped[lbl])grouped[lbl]=[];
-    grouped[lbl].push(o);
+    if(!weekGrouped[lbl])weekGrouped[lbl]=[];
+    weekGrouped[lbl].push(o);
   });
-  // 지난 주 자동 접기 (최초 1회)
+
+  const monthGrouped={};
+  Object.entries(weekGrouped).forEach(([week,wOrders])=>{
+    const parts=week.match(/(\d+)\/(\d+)/);
+    const d=parts?new Date(now.getFullYear(),parseInt(parts[1])-1,parseInt(parts[2])):now;
+    const mKey=d.getFullYear()+"-"+(d.getMonth()+1);
+    const mLabel=d.getFullYear()+"년 "+(d.getMonth()+1)+"월";
+    if(!monthGrouped[mKey])monthGrouped[mKey]={label:mLabel,weeks:{}};
+    monthGrouped[mKey].weeks[week]=wOrders;
+  });
+
+  const yearGrouped={};
+  Object.entries(monthGrouped).forEach(([mKey,mData])=>{
+    const yKey=mKey.split("-")[0];
+    if(!yearGrouped[yKey])yearGrouped[yKey]={label:yKey+"년",months:{}};
+    yearGrouped[yKey].months[mKey]=mData;
+  });
+
   if(!collapsedWeeks.has("__init__")){
-    Object.keys(grouped).forEach(week=>{
+    Object.keys(weekGrouped).forEach(week=>{
       if(week!==currentWeek) collapsedWeeks.add(week.replace(/[/]/g,"_"));
+    });
+    Object.keys(monthGrouped).forEach(mKey=>{
+      if(mKey!==currentMonthKey) collapsedMonths.add(mKey);
+    });
+    Object.keys(yearGrouped).forEach(yKey=>{
+      if(yKey!==currentYearKey) collapsedYears.add(yKey);
     });
     collapsedWeeks.add("__init__");
   }
-  // 검색 중에는 모든 주차를 펼쳐서 보여줌
-  const isWeekCollapsed=wk=>searching?false:collapsedWeeks.has(wk);
+
   const el=document.getElementById("orders-list");
-
-  // 안내 배너 (검색 중에는 결과 요약으로 대체)
-  const banner=searching
-    ? `<div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#a5b4fc">
-         🔍 "<strong>${q}</strong>" — <strong>${t("search_result",{n:filteredOrders.length})}</strong>
-       </div>`
-    : `<div style="background:${notice.bg};border:1px solid ${notice.border};border-radius:12px;padding:12px 14px;margin-bottom:16px">
-    <div style="font-weight:700;font-size:13px;color:${notice.color};margin-bottom:4px">${notice.icon} ${notice.title}</div>
-    <div style="font-size:12px;color:${isDark?"#94a3b8":"#6b7280"}">${notice.desc}</div>
-  </div>`;
-
-  if(!Object.keys(grouped).length){
-    el.innerHTML=banner+`<div style="text-align:center;padding:40px 20px;font-size:14px;color:#475569">${searching?t("search_none"):t("no_orders")}</div>`;return;
+  if(!Object.keys(weekGrouped).length){
+    el.innerHTML=banner+"<div style=\"text-align:center;padding:40px 20px;font-size:14px;color:#475569\">"+(searching?"검색 결과가 없어요":"출고 요청 내역이 없어요")+"</div>";
+    return;
   }
 
-  el.innerHTML=banner+Object.entries(grouped).map(([week,wOrders])=>`
-    <div class="week-group">
-      <div class="week-header" onclick="window.toggleWeek('${week.replace(/[/]/g,"_")}')" style="cursor:pointer;border-radius:${isWeekCollapsed(week.replace(/[/]/g,"_"))?"10px":"10px 10px 0 0"}">
-        <span>📅</span>
-        <span style="color:#60a5fa">${fmtWeek(week)}</span>
-        <span style="margin-left:auto;font-size:10px;color:#3b82f6">${nu(wOrders.length,"unit_case")}</span>
-        <span style="font-size:11px;color:#475569;margin-left:6px">${isWeekCollapsed(week.replace(/[/]/g,"_"))?"▶":"▼"}</span>
-      </div>
-      ${isWeekCollapsed(week.replace(/[/]/g,"_"))?"":(`
-      <div style="padding:7px 14px;font-size:11px;font-weight:600;color:#34d399;background:rgba(52,211,153,0.06);border-left:1px solid rgba(52,211,153,0.2);border-right:1px solid rgba(52,211,153,0.2)">
-        📦 ${(()=>{
-          // 주차 레이블에서 월요일 날짜 추출해서 차주 화요일 계산
-          const parts=week.match(/(\d+)\/(\d+)/);
-          const now=new Date();
-          if(!parts)return t("bn_week_ship",{d:"-"});
-          const mon=new Date(now.getFullYear(),parseInt(parts[1])-1,parseInt(parts[2]));
-          const tue=new Date(mon);tue.setDate(mon.getDate()+8);
-          const dd=(DAY_DISP[LANG]||KO_DAYS)[2];
-          return t("bn_week_ship",{d:`${tue.getMonth()+1}/${tue.getDate()}(${dd})`});
-        })()}
-      </div>
-      <div class="week-cycle">
-        ${[{l:t("monfri"),d:t("cyc_intake"),c:"#8b5cf6"},{l:(DAY_BADGE[LANG]||KO_DAYS)[1],d:t("cyc_prep"),c:"#3b82f6"},{l:(DAY_BADGE[LANG]||KO_DAYS)[2],d:t("cyc_ship"),c:"#10b981"}].map(s=>
-          `<div class="cycle-badge"><span style="font-weight:700;color:${s.c};padding:1px 6px;border-radius:99px;background:${s.c}20">${s.l}</span><span style="color:${isDark?"#475569":"#6b7280"};font-size:10px">${s.d}</span></div>`
-        ).join("")}
-      </div>
-      <div class="order-list">
-        ${wOrders.map(order=>`
-        <div class="order-row">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <div style="font-weight:700;font-size:14px;flex:1;display:flex;align-items:center;gap:6px">
-              ${order.storeName}
-              ${editable&&order.status==="검토중"?`<button onclick="openStoreNameEditModal('${order.id}','${order.storeName.replace(/'/g,"\\'")}')"
-                style="padding:2px 7px;border-radius:5px;font-size:9px;font-weight:700;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;cursor:pointer;flex-shrink:0">✏️ ${t("btn_edit")}</button>`:""}
-            </div>
-            ${statusBadgeHTML(order.status)}
-            <div style="font-size:10px;color:${isDark?"#475569":"#9ca3af"}">${order.date||""}</div>
-          </div>
-          ${(order.status==="취소"&&order.cancelReason)?`<div style="font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;margin-bottom:8px">${t("rsn_cancel")}: ${order.cancelReason}</div>`:""}
-          ${(order.status==="반려"&&order.rejectReason)?`<div style="font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;margin-bottom:8px">${t("rsn_reject")}: ${order.rejectReason}</div>`:""}
-          ${order.reason?`<div style="font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);color:#a5b4fc;margin-bottom:8px">${t("rsn_request")}: ${fmtReason(order.reason)}</div>`:""}
-          ${order.photos?.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${order.photos.map(p=>`<img src="${p}" style="width:60px;height:60px;object-fit:cover;border-radius:7px;border:1px solid rgba(255,255,255,0.1)">`).join("")}</div>`:""}
-          <div style="display:flex;flex-wrap:wrap;gap:4px">
-            ${order.items.map((it,idx)=>`
-            <div class="item-chip" style="display:inline-flex;align-items:center;gap:4px">
-              <span style="font-size:9px;color:#6366f1;font-weight:600">${it.collection}</span>
-              ${it.itemName}${it.optName?` [${tOpt(it.optName)}]`:""}
-              <strong style="color:${isDark?"#e2e8f0":"#111827"}">${it.unit==="개"?nu(it.qty,"unit_pcs"):it.qty+it.unit}</strong>
-              ${editable&&order.status==="검토중"?`<button onclick="openOrderEditModal('${order.id}',${idx},'${it.itemName}${it.optName?" ["+it.optName+"]":""}',${it.qty},'${it.unit}')"
-                style="padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;cursor:pointer;flex-shrink:0">${t("btn_edit")}</button>`:""}
-            </div>`).join("")}
-          </div>
-        </div>`).join("")}
-      </div>`)}
-    </div>`).join("");
+  let html=banner;
+  Object.entries(yearGrouped).forEach(([yKey,yData])=>{
+    const yCol=searching?false:collapsedYears.has(yKey);
+    const yTotal=Object.values(yData.months).reduce((a,m)=>Object.values(m.weeks).reduce((b,w)=>b+w.length,0)+a,0);
+    html+="<div style=\"margin-bottom:8px\">";
+    html+="<div onclick=\"window.toggleYear('"+yKey+"')\" style=\"display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)\">";
+    html+="<span>"+(yCol?"📁":"📂")+"</span>";
+    html+="<span style=\"font-weight:700;font-size:13px\">"+yData.label+"</span>";
+    html+="<span style=\"margin-left:auto;font-size:10px;color:#475569\">"+yTotal+"건</span>";
+    html+="<span style=\"font-size:11px;color:#6366f1;font-weight:700\">"+(yCol?"▶":"▼")+"</span></div>";
+    if(!yCol){
+      Object.entries(yData.months).forEach(([mKey,mData])=>{
+        const mCol=searching?false:collapsedMonths.has(mKey);
+        const mTotal=Object.values(mData.weeks).reduce((a,w)=>a+w.length,0);
+        html+="<div style=\"margin-left:8px;margin-bottom:6px\">";
+        html+="<div onclick=\"window.toggleMonth('"+mKey+"')\" style=\"display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05)\">";
+        html+="<span style=\"font-size:12px\">"+(mCol?"🗓️":"📅")+"</span>";
+        html+="<span style=\"font-weight:600;font-size:12px;color:#94a3b8\">"+mData.label+"</span>";
+        html+="<span style=\"margin-left:auto;font-size:10px;color:#475569\">"+mTotal+"건</span>";
+        html+="<span style=\"font-size:11px;color:#6366f1;font-weight:700\">"+(mCol?"▶":"▼")+"</span></div>";
+        if(!mCol){
+          Object.entries(mData.weeks).forEach(([week,wOrders])=>{
+            const wk=week.replace(/[/]/g,"_");
+            const wCol=searching?false:collapsedWeeks.has(wk);
+            const wParts=week.match(/(\d+)\/(\d+)/);
+            let shipDate="차주 화요일";
+            if(wParts){
+              const wMon=new Date(now.getFullYear(),parseInt(wParts[1])-1,parseInt(wParts[2]));
+              const wTue=new Date(wMon);wTue.setDate(wMon.getDate()+8);
+              shipDate=(wTue.getMonth()+1)+"/"+wTue.getDate()+"(화)";
+            }
+            html+="<div class=\"week-group\" style=\"margin-left:8px\">";
+            html+="<div class=\"week-header\" onclick=\"window.toggleWeek('"+wk+"')\" style=\"cursor:pointer;border-radius:"+(wCol?"10px":"10px 10px 0 0")+"\">";
+            html+="<span>📅</span><span style=\"color:#60a5fa\">"+week+"</span>";
+            html+="<span style=\"margin-left:auto;font-size:10px;color:#3b82f6\">"+wOrders.length+"건</span>";
+            html+="<span style=\"font-size:11px;color:#60a5fa;font-weight:700;margin-left:6px\">"+(wCol?"▶":"▼")+"</span></div>";
+            if(!wCol){
+              html+="<div style=\"padding:7px 14px;font-size:11px;font-weight:600;color:#34d399;background:rgba(52,211,153,0.06);border-left:1px solid rgba(52,211,153,0.2);border-right:1px solid rgba(52,211,153,0.2)\">📦 이 주 주문은 "+shipDate+"에 발송 예정이에요</div>";
+              html+="<div class=\"week-cycle\">";
+              [{l:"월~금",d:"주문 접수",c:"#8b5cf6"},{l:"월",d:"준비·택배접수",c:"#3b82f6"},{l:"화",d:"발송",c:"#10b981"}].forEach(s=>{
+                html+="<div class=\"cycle-badge\"><span style=\"font-weight:700;color:"+s.c+";padding:1px 6px;border-radius:99px;background:"+s.c+"20\">"+s.l+"</span><span style=\"color:"+(isDark?"#475569":"#6b7280")+";font-size:10px\">"+s.d+"</span></div>";
+              });
+              html+="</div><div class=\"order-list\">";
+              wOrders.forEach(order=>{
+                html+=renderOrderCard(order);
+              });
+              html+="</div>";
+            }
+            html+="</div>";
+          });
+        }
+        html+="</div>";
+      });
+    }
+    html+="</div>";
+  });
+  el.innerHTML=html;
 }
+
+function renderOrderCard(order){
+  const s=order.status||"검토중";
+  const st=STATUS_STYLE[s]||STATUS_STYLE["검토중"];
+  const isCanceled=s==="취소";
+  // 어떤 상태에서든 다른 모든 상태로 바꿀 수 있다
+  const ALL_STATUS=["검토중","승인","준비중","출고대기","출고완료","반려","취소"];
+  const steps=ALL_STATUS.filter(x=>x!==s);
+  const canPrint=["승인","준비중","출고대기","출고완료"].includes(s);
+  // 해외 매장(매장명에 _ KR 이 없는 건)만 쉬핑 리스트 대상
+  const isOverseas = !String(order.storeName||"").toUpperCase().includes("_ KR");
+  const canShip = canPrint && isOverseas;
+
+  // 상태 드롭다운 HTML
+  let ddHtml="";
+  if(steps.length){
+    let items="";
+    steps.forEach(step=>{
+      const sst=STATUS_STYLE[step]||{};
+      let action="";
+      if(step==="승인") action="window.openApproveModal('"+order.id+"')";
+      else if(step==="반려") action="window.openRejectModal('"+order.id+"')";
+      else if(step==="취소") action="window.openCancelModal('"+order.id+"')";
+      else action="window.setStatus('"+order.id+"','"+step+"')";
+      items+="<div class=\"dd-item\" data-action=\""+escAttr(action)+"\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:"+(sst.color||"#e2e8f0")+";border-bottom:1px solid rgba(255,255,255,0.05)\">"+(sst.icon||"")+" "+step+"으로 변경</div>";
+    });
+    items+="<div class=\"dd-item\" data-action=\"window.deleteOrder('"+order.id+"')\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:#f87171\">🗑️ 삭제</div>";
+    ddHtml="<div id=\"dd-"+order.id+"\" class=\"status-dropdown\" style=\"display:none;position:fixed;background:#1e2235;border:1px solid rgba(255,255,255,0.12);border-radius:10px;z-index:9999;min-width:150px;max-height:60vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)\">"+items+"</div>";
+  }
+
+  const statusBtn="<div style=\"position:relative;display:inline-block;flex-shrink:0\">"
+    +"<button id=\"status-btn-"+order.id+"\" class=\"status-toggle-btn\" data-oid=\""+order.id+"\" style=\"display:flex;align-items:center;gap:5px;padding:5px 10px 5px 12px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid "+st.border+";background:"+st.bg+";color:"+st.color+";white-space:nowrap\">"+st.icon+" "+s+"<span style=\"font-size:9px;opacity:.7;margin-left:2px\">▼</span></button>"
+    +ddHtml
+    +(isCanceled?"<button class=\"delete-order-btn\" data-oid=\""+order.id+"\" style=\"margin-left:4px;padding:4px 8px;border-radius:6px;font-size:11px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;cursor:pointer\">🗑️</button>":"")
+    +"</div>";
+
+  const dateMeta="<div style=\"font-size:10px;color:"+(isDark?"#475569":"#9ca3af")+";text-align:right;flex-shrink:0\">"
+    +escH(order.date||"")
+    +(order.handler?"<div style=\"font-weight:600;color:#6366f1;margin-top:1px\">"+escH(order.handler)+"</div>":"")
+    +"</div>";
+
+  // 매장명 + 연필 + 프린터
+  const storeRow="<div style=\"display:flex;align-items:center;gap:4px;flex:1;min-width:0\">"
+    +"<div style=\"font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">"+escH(order.storeName)+"</div>"
+    +(!isCanceled?"<button class=\"store-edit-btn\" data-oid=\""+order.id+"\" data-sn=\""+escAttr(order.storeName)+"\" title=\"매장명 수정\" style=\"padding:2px 6px;border-radius:5px;font-size:11px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);color:#a5b4fc;cursor:pointer;flex-shrink:0\">✏️</button>":"")
+    +(canPrint?"<button class=\"print-order-btn\" data-oid=\""+order.id+"\" title=\"출고 지시서 출력\" style=\"padding:2px 6px;border-radius:5px;font-size:11px;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.2);color:#94a3b8;cursor:pointer;flex-shrink:0\">🖨️</button>":"")
+    +(canShip?"<button class=\"ship-order-btn\" data-oid=\""+order.id+"\" title=\"쉬핑 리스트 다운로드\" style=\"padding:2px 6px;border-radius:5px;font-size:11px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:#34d399;cursor:pointer;flex-shrink:0\">✈️</button>":"")
+    +"</div>";
+
+  // 헤더 행 (1 depth)
+  let html="<div class=\"order-row\">"
+    +"<div style=\"display:flex;align-items:center;gap:6px;margin-bottom:8px\">"
+      +storeRow
+      +statusBtn
+      +dateMeta
+    +"</div>";
+
+  // 사유
+  if(order.reason) html+="<div style=\"font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);color:#a5b4fc;margin-bottom:6px\">📝 "+escH(order.reason)+"</div>";
+
+  // 사진
+  if(order.photos&&order.photos.length){
+    let photoImgs="";
+    order.photos.forEach(p=>{ photoImgs+="<img src=\""+escAttr(p)+"\" style=\"width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.12);cursor:zoom-in\" class=\"view-photo-btn\" data-src=\""+escAttr(p)+"\">"; });
+    html+="<div style=\"margin-bottom:6px\"><button class=\"photo-toggle-btn\" data-cnt=\""+order.photos.length+"\" style=\"padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);color:#a5b4fc;cursor:pointer;margin-bottom:6px\">📷 사진 보기 ("+order.photos.length+"장)</button><div style=\"display:none;gap:6px;flex-wrap:wrap\">"+photoImgs+"</div></div>";
+  }
+
+  // 취소/반려 사유
+  if(s==="취소"&&order.cancelReason) html+="<div style=\"font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;margin-bottom:6px\">🚫 취소 사유: "+escH(order.cancelReason)+"</div>";
+  if(s==="반려"&&order.rejectReason) html+="<div style=\"font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;margin-bottom:6px\">❌ 반려 사유: "+escH(order.rejectReason)+"</div>";
+
+  // 재고 품목
+  const chips=order.items.map(it=>"<div class=\"item-chip\"><span style=\"font-size:9px;color:#6366f1;font-weight:600;margin-right:2px\">"+escH(it.collection)+"</span>"+escH(it.itemName)+(it.optName?" ["+escH(it.optName)+"]":"")+"<strong style=\"color:"+(isDark?"#e2e8f0":"#111827")+";margin-left:3px\">"+it.qty+escH(it.unit)+"</strong></div>");
+  const SHOW=3;
+  if(chips.length<=SHOW){
+    html+="<div style=\"display:flex;flex-wrap:wrap;gap:4px\">"+chips.join("")+"</div>";
+  } else {
+    const moreId="items-more-"+order.id;
+    const hiddenCnt=chips.length-SHOW;
+    html+="<div>"
+      +"<div style=\"display:flex;flex-wrap:wrap;gap:4px\">"+chips.slice(0,SHOW).join("")+"</div>"
+      +"<div id=\""+moreId+"\" style=\"display:none;flex-wrap:wrap;gap:4px;margin-top:4px\">"+chips.slice(SHOW).join("")+"</div>"
+      +"<button class=\"items-toggle-btn\" data-mid=\""+moreId+"\" data-cnt=\""+hiddenCnt+"\" style=\"margin-top:6px;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;cursor:pointer\">▼ "+hiddenCnt+"개 더보기</button>"
+      +"</div>";
+  }
+
+  html+="</div>"; // order-row 닫기
+  return html;
+}
+
+function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function escAttr(s){return String(s||"").replace(/"/g,"&quot;");}
+
 
 // ── 출고요청 검색 ──
 (function initOrderSearch(){
@@ -1474,7 +1618,7 @@ function renderOrders(){
   };
   input.addEventListener("input",()=>{
     clearTimeout(timer);
-    timer=setTimeout(apply,180); // 타이핑 중 과도한 렌더 방지
+    timer=setTimeout(apply,180);
   });
   input.addEventListener("keydown",e=>{
     if(e.key==="Escape"){ input.value=""; apply(); input.blur(); }
@@ -1483,78 +1627,77 @@ function renderOrders(){
   clearBtn?.addEventListener("click",()=>{ input.value=""; apply(); input.focus(); });
 })();
 
+window.toggleYear=yk=>{if(collapsedYears.has(yk))collapsedYears.delete(yk);else collapsedYears.add(yk);renderOrders();};
+window.toggleMonth=mk=>{if(collapsedMonths.has(mk))collapsedMonths.delete(mk);else collapsedMonths.add(mk);renderOrders();};
 window.toggleWeek=wk=>{
   if(collapsedWeeks.has(wk))collapsedWeeks.delete(wk);
   else collapsedWeeks.add(wk);
   renderOrders();
 };
 
-// ── 매장명 수정 모달 ──
-let editStoreOrderId=null;
-window.openStoreNameEditModal=(orderId,currentName)=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
-  editStoreOrderId=orderId;
-  const modal=document.createElement("div");modal.className="modal-bg";modal.id="store-edit-modal";
-  modal.innerHTML=`<div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title">${t("lbl_store")} — ${t("btn_edit")}</div>
-    <div class="field-wrap">
-      <div class="field-label">${t("lbl_store")}</div>
-      <input id="store-edit-input" type="text" value="${currentName.replace(/"/g,"&quot;")}" class="field-input"
-        onkeydown="if(event.key==='Enter')confirmStoreNameEdit()">
-    </div>
-    <button class="btn-primary" onclick="confirmStoreNameEdit()">${t("btn_save")}</button>
-    <button class="btn-secondary-sm" onclick="document.getElementById('store-edit-modal').remove()">${t("btn_cancel")}</button>
-  </div>`;
-  modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
-  document.body.appendChild(modal);
-  setTimeout(()=>{
-    const inp=document.getElementById("store-edit-input");
-    inp?.focus();inp?.select();
-  },100);
-};
+function getCurrentWeekLabel(){
+  return getWeekLabel(new Date().toISOString());
+}
 
-window.confirmStoreNameEdit=async()=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
-  const newName=document.getElementById("store-edit-input")?.value.trim();
-  if(!newName){showToast(t("ms_need_store"),"#f87171");return;}
-  const order=orders.find(o=>o.id===editStoreOrderId);
-  if(!order)return;
-  try{
-    await setDoc(doc(collection(db,"orders"),editStoreOrderId),{...order,storeName:newName},{merge:false});
-    document.getElementById("store-edit-modal")?.remove();
-    showToast(t("ms_store_ok"));
-  }catch(e){showToast(t("ms_save_err")+": "+e.message,"#f87171");}
-};
+// 이벤트 위임 통합
+document.addEventListener("click", e=>{
+  // 모달 닫기
+  const closeBtn = e.target.closest(".modal-close-btn");
+  if(closeBtn){ closeBtn.closest(".modal-bg")?.remove(); return; }
+  // 매장명 수정
+  const storeEditBtn = e.target.closest(".store-edit-btn");
+  if(storeEditBtn){ window.openStoreNameEditModal(storeEditBtn.dataset.oid, storeEditBtn.dataset.sn); return; }
+  // 출고 지시서 출력
+  const printBtn = e.target.closest(".print-order-btn");
+  if(printBtn){ window.printOrder(printBtn.dataset.oid); return; }
+  const shipBtn = e.target.closest(".ship-order-btn");
+  if(shipBtn){ window.downloadShippingList(shipBtn.dataset.oid); return; }
+  // 상태 드롭다운 토글
+  const statusBtn = e.target.closest(".status-toggle-btn");
+  if(statusBtn){ window.toggleStatusDropdown(statusBtn.dataset.oid); return; }
+  // 드롭다운 아이템 클릭
+  const ddItem = e.target.closest(".dd-item");
+  if(ddItem){ eval(ddItem.dataset.action); return; }
+  // 삭제 버튼
+  const deleteBtn = e.target.closest(".delete-order-btn");
+  if(deleteBtn){ window.deleteOrder(deleteBtn.dataset.oid); return; }
+  // 재고 품목 더보기
+  const toggleBtn = e.target.closest(".items-toggle-btn");
+  if(toggleBtn){
+    const el = document.getElementById(toggleBtn.dataset.mid);
+    if(!el) return;
+    const show = el.style.display==="none";
+    el.style.display = show ? "flex" : "none";
+    toggleBtn.textContent = show ? "▲ 접기" : "▼ "+toggleBtn.dataset.cnt+"개 더보기";
+    return;
+  }
+  // 옵션 삭제
+  const removeBtn = e.target.closest(".remove-opt-btn");
+  if(removeBtn){ window.removeOptItem(parseInt(removeBtn.dataset.idx)); return; }
+  // 사진 보기 토글
+  const photoBtn = e.target.closest(".photo-toggle-btn");
+  if(photoBtn){
+    const next = photoBtn.nextElementSibling;
+    if(!next) return;
+    const show = next.style.display==="none";
+    next.style.display = show ? "flex" : "none";
+    photoBtn.textContent = show ? "📷 사진 접기" : "📷 사진 보기 ("+photoBtn.dataset.cnt+"장)";
+    return;
+  }
+  // 사진 확대
+  const photoImg = e.target.closest(".view-photo-btn");
+  if(photoImg){ window.viewPhoto(photoImg.dataset.src); return; }
+  // 드롭다운 외부 클릭 닫기
+  document.querySelectorAll(".status-dropdown").forEach(dd=>{ dd.style.display="none"; });
+});
 
-// ── 초기 언어 적용 ──
-(function initLang(){
-  const meta=LANG_META.find(l=>l.code===LANG);
-  const lbl=document.getElementById("lang-label");
-  if(lbl&&meta) lbl.textContent=meta.label;
-  applyStaticI18n();
-  // 언어 메뉴 바깥 클릭 시 닫기
-  document.addEventListener("click",ev=>{
-    const menu=document.getElementById("lang-menu");
-    if(!menu||menu.style.display!=="block") return;
-    if(!ev.target.closest("#lang-menu")&&!ev.target.closest("[onclick*='toggleLangMenu']")) menu.style.display="none";
-  });
-  // 언어 선택 항목 hover
-  document.querySelectorAll(".lang-opt").forEach(el=>{
-    el.addEventListener("mouseenter",()=>el.style.background="rgba(255,255,255,0.08)");
-    el.addEventListener("mouseleave",()=>el.style.background="");
-  });
-})();
-</script>
-<script>
+// Service Worker 등록
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').then(reg=>{
-    // 새 버전 감지 시 즉시 업데이트
     reg.addEventListener('updatefound',()=>{
       const newSW=reg.installing;
       newSW.addEventListener('statechange',()=>{
         if(newSW.state==='installed'&&navigator.serviceWorker.controller){
-          // 새 버전 발견 시 자동 새로고침
           navigator.serviceWorker.addEventListener('controllerchange',()=>window.location.reload());
           newSW.postMessage({type:'SKIP_WAITING'});
         }
