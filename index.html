@@ -624,6 +624,9 @@ window.openCheckout=()=>{
 };
 
 // ── 엑셀 오픈 발주 처리 ──
+const XL_SKIP_NAMES = ["합계 수량","합계","합 계","총 재고","총계","TOTAL","Total"];
+const xlUp     = s => String(s||"").trim().toUpperCase();
+const xlNoOpt  = s => { const v = String(s||"").trim(); return !v || v==="-" || v==="–" || v==="—" || xlUp(v)==="N/A"; };
 window.handleOpenOrderExcel = async(input) => {
   const file = input.files[0];
   if (!file) return;
@@ -672,6 +675,7 @@ window.handleOpenOrderExcel = async(input) => {
         if (coll) curColl = coll;
         if (name) curName = name;
         if (!curName) continue;
+        if (XL_SKIP_NAMES.indexOf(curName) >= 0) continue; // 합계 줄은 건너뜀
         if (qty <= 0) continue; // 수량 0이면 건너뜀
 
         parsed.push({ collection: curColl, name: curName, opt, qty });
@@ -685,31 +689,34 @@ window.handleOpenOrderExcel = async(input) => {
       const matched = [], insufficient = [], notFound = [];
 
       parsed.forEach(p => {
-        // 상품명으로 매칭
-        const item = items.find(i =>
-          i.name.toUpperCase() === p.name.toUpperCase() &&
-          (!p.collection || i.collection.toUpperCase() === p.collection.toUpperCase())
-        ) || items.find(i => i.name.toUpperCase() === p.name.toUpperCase());
+        // 엑셀의 "-" / 빈칸 = 옵션 없음
+        const po = xlNoOpt(p.opt) ? "" : String(p.opt).trim();
 
-        if (!item) { notFound.push(p); return; }
+        // 상품명(+컬렉션)으로 매칭 — 값이 없어도 터지지 않게
+        const item = items.find(i => xlUp(i.name)===xlUp(p.name) &&
+                                     (!p.collection || xlUp(i.collection)===xlUp(p.collection)))
+                  || items.find(i => xlUp(i.name)===xlUp(p.name));
+        if (!item) { notFound.push({...p, why:"재고에 없는 품목"}); return; }
 
-        // 재고 확인
-        let stock = 0;
-        if (p.opt && item.options) {
-          const o = item.options.find(o => o.name.includes(p.opt) || p.opt.includes(o.name));
-          stock = o ? (o.quantity || 0) : 0;
+        // 옵션이 "실제로" 있는 품목인지 (빈 배열은 옵션 없음)
+        const opts = Array.isArray(item.options) ? item.options : [];
+        let optName = null, stock = 0;
+
+        if (opts.length) {
+          if (!po) { notFound.push({...p, why:"옵션을 지정하지 않았어요"}); return; }
+          const o = opts.find(x => xlUp(x.name)===xlUp(po))
+                 || opts.find(x => xlUp(x.name).includes(xlUp(po)) || xlUp(po).includes(xlUp(x.name)));
+          if (!o) { notFound.push({...p, why:"옵션명이 재고와 달라요"}); return; }
+          optName = o.name;
+          stock   = o.quantity || 0;
         } else {
-          stock = item.options?.length ? Math.min(...item.options.map(o=>o.quantity||0)) : (item.quantity||0);
+          optName = null;
+          stock   = item.quantity || 0;
         }
 
-        const optName = p.opt && item.options ?
-          (item.options.find(o => o.name.includes(p.opt) || p.opt.includes(o.name))?.name || p.opt) : null;
-
-        if (stock < p.qty) {
-          insufficient.push({...p, item, optName, stock, available: stock});
-        } else {
-          matched.push({...p, item, optName, stock});
-        }
+        const rec = {...p, opt: optName || "", item, optName, stock};
+        if (stock < p.qty) insufficient.push({...rec, available: stock});
+        else               matched.push(rec);
       });
 
       // 결과 모달 표시
@@ -753,7 +760,7 @@ function showOpenOrderReviewModal(matched, insufficient, notFound) {
   if (notFound.length) {
     notFoundHtml = `<div style="margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">${t("xl_notfound",{n:notFound.length})}</div>
-      ${notFound.map(p=>`<div style="font-size:11px;color:#f87171;padding:3px 0">${p.collection} - ${p.name}${p.opt?` [${p.opt}]`:""}</div>`).join("")}
+      ${notFound.map(p=>`<div style="font-size:11px;color:#f87171;padding:3px 0">${p.collection} - ${p.name}${p.opt?` [${p.opt}]`:""}${p.why?` <span style="color:#94a3b8">— ${p.why}</span>`:""}</div>`).join("")}
     </div>`;
   }
 
@@ -986,18 +993,32 @@ window.confirmOrder=async(skipLateCheck=false)=>{
   }
   // 재고 차감 — 발주 요청 시점에 즉시 뺀다 (오버부킹 방지)
   // 취소·반려 시에는 관리자 화면에서 되돌린다
+  // 같은 품목의 여러 옵션이 서로 덮어쓰지 않도록 품목 단위로 모아서 한 번에 쓴다
+  const deductProblems=[];
+  const byItem={};
   for(const c of cart){
-    const item=items.find(i=>i.id===c.itemId);
-    if(!item) continue;
+    const q=Number(c.qty)||0; if(!q) continue;
+    (byItem[c.itemId]=byItem[c.itemId]||[]).push({optName:c.optName||null,qty:q,itemName:c.itemName});
+  }
+  for(const itemId of Object.keys(byItem)){
+    const item=items.find(i=>i.id===itemId);
+    if(!item){ deductProblems.push(`${byItem[itemId][0].itemName||itemId} — 재고에 없는 품목`); continue; }
     const clone=JSON.parse(JSON.stringify(item));
-    if(c.optName&&clone.options){
-      const o=clone.options.find(x=>x.name===c.optName);
-      if(o) o.quantity=Math.max(0,(o.quantity||0)-c.qty);
-    }else{
-      clone.quantity=Math.max(0,(clone.quantity||0)-c.qty);
+    for(const a of byItem[itemId]){
+      const hasOpts=Array.isArray(clone.options)&&clone.options.length>0;
+      if(hasOpts){
+        const o=a.optName?clone.options.find(x=>x.name===a.optName):null;
+        if(!o){ deductProblems.push(`${item.name}${a.optName?" ["+a.optName+"]":""} — 옵션을 찾지 못해 차감되지 않았어요`); continue; }
+        o.quantity=(o.quantity||0)-a.qty;   // 0으로 깎지 않는다 (취소 복구와 대칭이 깨짐)
+      }else{
+        clone.quantity=(clone.quantity||0)-a.qty;
+      }
     }
-    try{ await setDoc(doc(collection(db,"items"),item.id),clone); }
-    catch(e){ console.error("재고 차감 실패:",item.name,e); }
+    try{ await setDoc(doc(collection(db,"items"),itemId),clone); }
+    catch(e){ deductProblems.push(`${item.name} — 재고 차감 저장 실패`); console.error(e); }
+  }
+  if(deductProblems.length){
+    alert("⚠️ 아래 품목은 재고에서 차감되지 않았어요. 관리자에게 알려주세요.\n\n- "+deductProblems.join("\n- "));
   }
 
   // 발주 저장
@@ -1193,7 +1214,7 @@ window.changeCartQty=(i,delta)=>{
   const item=items.find(x=>x.id===c.itemId);
   let stock=0;
   if(item){
-    if(c.optName&&item.options){ const o=item.options.find(x=>x.name===c.optName); stock=o?(o.quantity||0):0; }
+    if(c.optName&&item.options?.length){ const o=item.options.find(x=>x.name===c.optName); stock=o?(o.quantity||0):0; }
     else stock=totalQty(item);
   }
   if(delta>0&&next>stock){ showToast(t("ms_over_cur",{n:stock}),"#f87171"); return; }
