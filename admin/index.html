@@ -169,6 +169,15 @@ body.light .login-card input{border-color:rgba(0,0,0,0.12);background:#fff}
 .login-link{margin-top:14px;background:none;border:none;font-size:12.5px;color:#64748b;font-family:inherit;cursor:pointer;text-decoration:underline}
 .logout-btn{padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8}
 body.light .logout-btn{border-color:rgba(0,0,0,0.12);color:#475569}
+/* ── 담당자(manager) 역할: 재고·프로그램 관리 기능 숨김 ── */
+html.role-manager .owner-only,
+html.role-manager #fab-add-item,
+html.role-manager #nav-batch,
+html.role-manager .delete-order-btn,
+html.role-manager .item-name-btn,
+html.role-manager .item-qty-btn,
+html.role-manager .opt-qty-btn,
+html.role-manager .card-actions:has(.item-qty-btn){display:none!important}
 </style>
 </head>
 <body class="dark">
@@ -213,7 +222,7 @@ body.light .logout-btn{border-color:rgba(0,0,0,0.12);color:#475569}
     <div style="height:80px"></div>
   </div>
   <!-- 상품 추가 FAB -->
-  <button onclick="window.openAddItemModal()" style="position:fixed;bottom:calc(60px + 16px);right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;z-index:90" id="add-item-fab">＋</button>
+  <button id="fab-add-item" onclick="window.openAddItemModal()" style="position:fixed;bottom:calc(60px + 16px);right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;z-index:90" id="add-item-fab">＋</button>
   </div>
 
   <div id="tab-batch" class="tab-pane"><div class="page-scroll">
@@ -405,6 +414,7 @@ document.getElementById("logout-btn").addEventListener("click",async()=>{
   await signOut(auth);
 });
 let pendingLoginMsg=""; // 로그아웃 직후 로그인 화면에 보여줄 안내
+let userRole="manager"; // 로그인 확인 전에는 가장 낮은 권한으로 둔다
 onAuthStateChanged(auth,async user=>{
   if(!user){
     if(dataUnsubs.length){ location.reload(); return; } // 로그아웃: 화면에 남은 데이터 정리
@@ -416,7 +426,10 @@ onAuthStateChanged(auth,async user=>{
   try{
     const snap=await getDoc(doc(db,"admins",(user.email||"").toLowerCase()));
     isAdmin=snap.exists();
+    // role: "owner"=최고관리자(전체 기능). 그 외(비어 있음·오타 포함)는 안전하게 담당자(manager)로 본다.
+    if(isAdmin) userRole=(snap.data()?.role==="owner")?"owner":"manager";
   }catch(err){ console.error(err); }
+  document.documentElement.classList.toggle("role-manager",userRole!=="owner");
   if(!isAdmin){
     pendingLoginMsg="관리자로 등록되지 않은 계정이에요. 관리자에게 등록을 요청해 주세요.";
     await signOut(auth);
@@ -1638,7 +1651,7 @@ function renderOrderCard(order){
       else action="window.setStatus('"+order.id+"','"+step+"')";
       items+="<div class=\"dd-item\" data-action=\""+escAttr(action)+"\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:"+(sst.color||"#e2e8f0")+";border-bottom:1px solid rgba(255,255,255,0.05)\">"+(sst.icon||"")+" "+step+"으로 변경</div>";
     });
-    items+="<div class=\"dd-item\" data-action=\"window.deleteOrder('"+order.id+"')\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:#f87171\">🗑️ 삭제</div>";
+    items+="<div class=\"dd-item owner-only\" data-action=\"window.deleteOrder('"+order.id+"')\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:#f87171\">🗑️ 삭제</div>";
     ddHtml="<div id=\"dd-"+order.id+"\" class=\"status-dropdown\" style=\"display:none;position:fixed;background:#1e2235;border:1px solid rgba(255,255,255,0.12);border-radius:10px;z-index:9999;min-width:150px;max-height:60vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)\">"+items+"</div>";
   }
 
@@ -1790,6 +1803,19 @@ document.addEventListener("click", e=>{
   if(photoImg){ window.viewPhoto(photoImg.dataset.src); return; }
   // 드롭다운 외부 클릭 닫기
   document.querySelectorAll(".status-dropdown").forEach(dd=>{ dd.style.display="none"; });
+});
+
+// ── 역할별 기능 제한 ──
+// 담당자(manager)는 재고·프로그램 관리 기능을 쓸 수 없다. 버튼이 숨겨져 있어도 함수 단계에서 한 번 더 막는다.
+// (출고요청 승인·반려·상태 변경·취소·매장명 수정, 조회, 쉬핑 리스트·인쇄는 담당자도 가능)
+["openAddItemModal","confirmAddItem","openItemNameModal","confirmItemName","openQtyModal","confirmQtyModal",
+ "handleBatchOrderExcel","confirmBatchOrders","deleteOrder"].forEach(name=>{
+  const original=window[name];
+  if(typeof original!=="function") return;
+  window[name]=function(...args){
+    if(userRole!=="owner"){ showToast("이 기능은 최고관리자만 사용할 수 있어요","#f87171"); return; }
+    return original.apply(this,args);
+  };
 });
 
 // Service Worker 등록
