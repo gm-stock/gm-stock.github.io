@@ -4,12 +4,14 @@ rules_version = '2';
 // 재고관리 앱 Firestore 보안 규칙 (젠틀몬스터·템버린즈 공통)
 //
 // 누가 무엇을 할 수 있나
-//  - 누구나(매장 화면, 로그인 없음): 재고·출고요청 보기, 출고요청 만들기(검토중),
+//  - 외부인(로그인 안 함, 또는 명단에 없는 계정): 아무것도 할 수 없음
+//  - 매장 계정(stores 명단): 재고·출고요청 보기, 출고요청 만들기(검토중),
 //    검토중인 출고요청의 수량·매장명 수정, 재고 수량 차감
 //  - 담당자(admins 문서 role != "owner"): 위 + 출고요청 상태 변경(승인·반려·출고·취소)
 //  - 최고관리자(admins 문서 role == "owner"): 전부
 //
 // 관리자 명단: admins/{이메일 소문자}, 필드 role ("owner" 또는 "manager")
+// 매장 계정 명단: stores/{이메일 소문자}
 // Apps Script 시트 동기화는 구글 계정(프로젝트 소유자) 인증으로 접속하므로 이 규칙의 영향을 받지 않는다.
 // ─────────────────────────────────────────────────────────────
 service cloud.firestore {
@@ -28,6 +30,13 @@ service cloud.firestore {
     }
     function isOwner() {
       return isAdmin() && get(adminDoc()).data.get("role", "") == "owner";
+    }
+    function isStore() {
+      return myEmail() != "" && exists(/databases/$(database)/documents/stores/$(myEmail()));
+    }
+    // 매장 화면을 쓸 수 있는 사람: 매장 계정 + 관리자
+    function isStaff() {
+      return isStore() || isAdmin();
     }
 
     // ── 재고 수량만 바뀌는지 ──
@@ -48,24 +57,25 @@ service cloud.firestore {
 
     // ── 재고 품목 ──
     match /items/{itemId} {
-      allow read: if true;
+      allow read: if isStaff();
       allow create, delete: if isOwner();
-      allow update: if isOwner() || onlyQuantityChanged();
+      allow update: if isOwner() || (isStaff() && onlyQuantityChanged());
     }
 
     // ── 출고요청 ──
     match /orders/{orderId} {
-      allow read: if true;
+      allow read: if isStaff();
 
-      // 매장 화면은 검토중 상태로만 만들 수 있다. 관리자는 엑셀 일괄 발주 등으로 자유롭게.
+      // 매장 계정·담당자는 검토중 상태로만 만들 수 있다. 최고관리자는 엑셀 일괄 발주 등으로 자유롭게.
       allow create: if isOwner()
-        || request.resource.data.get("status", "") == "검토중";
+        || (isStaff() && request.resource.data.get("status", "") == "검토중");
 
-      // 매장 화면: 검토중인 요청의 수량(items)·매장명만, 상태는 그대로.
+      // 매장 계정: 검토중인 요청의 수량(items)·매장명만, 상태는 그대로.
       //   (매장 화면은 문서 전체를 다시 저장하면서 id 칸을 함께 넣으므로 id도 허용)
       // 담당자·최고관리자: 상태 변경 포함 자유롭게.
       allow update: if isAdmin()
-        || (resource.data.get("status", "") == "검토중"
+        || (isStore()
+            && resource.data.get("status", "") == "검토중"
             && request.resource.data.get("status", "") == "검토중"
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(["items", "storeName", "id"]));
@@ -84,6 +94,12 @@ service cloud.firestore {
     match /packaging/{packId} {
       allow read: if isAdmin();
       allow write: if isOwner();
+    }
+
+    // ── 매장 계정 명단: 본인 문서만 읽기, 수정은 Firebase 콘솔에서만 ──
+    match /stores/{email} {
+      allow get: if myEmail() != "" && myEmail() == email;
+      allow list, write: if false;
     }
 
     // ── 관리자 명단: 본인 문서만 읽기, 수정은 Firebase 콘솔에서만 ──
