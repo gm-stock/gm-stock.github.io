@@ -155,11 +155,39 @@ body.dark #loading{background:#0a0a0f}
 body.light #loading{background:#f5f5f7}
 .spinner{width:36px;height:36px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── 관리자 로그인 ── */
+#login-screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;z-index:1000}
+body.dark #login-screen{background:#0a0a0f}
+body.light #login-screen{background:#f5f5f7}
+.login-card{width:100%;max-width:340px;text-align:center}
+.login-card input{width:100%;padding:13px 14px;margin-bottom:10px;border-radius:12px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:inherit}
+body.light .login-card input{border-color:rgba(0,0,0,0.12);background:#fff}
+.login-card input:focus{border-color:#6366f1}
+.login-btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:inherit;color:#fff;background:linear-gradient(135deg,#3b82f6,#6366f1);cursor:pointer}
+.login-btn:disabled{opacity:.6;cursor:default}
+.login-err{min-height:20px;margin:10px 0 0;font-size:13px;color:#f87171;line-height:1.5}
+.login-link{margin-top:14px;background:none;border:none;font-size:12.5px;color:#64748b;font-family:inherit;cursor:pointer;text-decoration:underline}
+.logout-btn{padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8}
+body.light .logout-btn{border-color:rgba(0,0,0,0.12);color:#475569}
 </style>
 </head>
 <body class="dark">
 <div id="loading"><div class="spinner"></div><div style="font-size:14px;color:#475569">연결 중...</div></div>
 <div id="toast"></div>
+
+<!-- 관리자 로그인 -->
+<div id="login-screen">
+  <form class="login-card" id="login-form" autocomplete="on">
+    <div style="font-size:44px;margin-bottom:14px">🔐</div>
+    <div style="font-size:18px;font-weight:800;margin-bottom:6px">관리자 로그인</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:22px">등록된 관리자 계정으로 로그인해 주세요</div>
+    <input id="login-email" type="email" placeholder="이메일" autocomplete="username" required>
+    <input id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password" required>
+    <button class="login-btn" id="login-submit" type="submit">로그인</button>
+    <div class="login-err" id="login-err"></div>
+    <button class="login-link" id="login-reset" type="button">비밀번호를 잊으셨나요?</button>
+  </form>
+</div>
 
 <!-- 헤더 -->
 <div id="app-header">
@@ -170,7 +198,10 @@ body.light #loading{background:#f5f5f7}
       <div class="stat-lbl" id="header-sub">연결 중...</div>
     </div>
   </div>
-  <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">🌙</div></button>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="logout-btn" id="logout-btn" type="button" title="">로그아웃</button>
+    <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">🌙</div></button>
+  </div>
 </div>
 
 <div id="app-body">
@@ -243,16 +274,19 @@ body.light #loading{background:#f5f5f7}
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getFirestore,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,doc,getDoc,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const db=getFirestore(initializeApp({
+const app=initializeApp({
   apiKey:"AIzaSyBHWNK9K1Ack5-Sj02PAuVbCu2gcOSnpMY",
   authDomain:"gm-stock-management.firebaseapp.com",
   projectId:"gm-stock-management",
   storageBucket:"gm-stock-management.firebasestorage.app",
   messagingSenderId:"590013505498",
   appId:"1:590013505498:web:59343cee0d152ee97c6ae3"
-}));
+});
+const db=getFirestore(app);
+const auth=getAuth(app);
 
 window.closeModal=id=>{document.getElementById(id)?.remove();};
 let items=[],orders=[];
@@ -314,17 +348,84 @@ window.closeModal=id=>document.getElementById(id).style.display="none";
 document.querySelectorAll(".modal-bg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.style.display="none";}));
 
 // ── Firebase ──
+// 데이터는 관리자 로그인이 확인된 뒤에만 불러온다 (startData).
 let firstLoad=true;
-onSnapshot(collection(db,"items"),snap=>{
-  items=snap.docs.map(d=>({...d.data(),id:d.id}));
-  if(firstLoad){document.getElementById("loading").style.display="none";firstLoad=false;}
-  const total=items.reduce((a,i)=>a+totalQty(i),0);
-  document.getElementById("header-sub").textContent=`${items.length}종 · ${total.toLocaleString()}개`;
-  renderStock();
+let dataUnsubs=[];
+function startData(){
+  if(dataUnsubs.length) return;
+  dataUnsubs.push(onSnapshot(collection(db,"items"),snap=>{
+    items=snap.docs.map(d=>({...d.data(),id:d.id}));
+    if(firstLoad){document.getElementById("loading").style.display="none";firstLoad=false;}
+    const total=items.reduce((a,i)=>a+totalQty(i),0);
+    document.getElementById("header-sub").textContent=`${items.length}종 · ${total.toLocaleString()}개`;
+    renderStock();
+  },err=>{console.error(err);showToast("재고를 불러오지 못했어요: "+err.message,"#f87171");}));
+  dataUnsubs.push(onSnapshot(query(collection(db,"orders"),orderBy("createdAt","desc")),snap=>{
+    orders=snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderOrders();
+  },err=>{console.error(err);showToast("출고요청을 불러오지 못했어요: "+err.message,"#f87171");}));
+}
+
+// ── 관리자 로그인 ──
+// 관리자 명단: Firestore admins 컬렉션, 문서 ID = 관리자 이메일(소문자).
+// 사람을 추가·삭제할 때는 Firebase 콘솔에서 admins 문서만 추가·삭제하면 된다.
+const loginScreen=document.getElementById("login-screen");
+const loginErr=document.getElementById("login-err");
+const loginBtn=document.getElementById("login-submit");
+function showLogin(msg=""){
+  document.getElementById("loading").style.display="none";
+  loginScreen.style.display="flex";
+  loginErr.textContent=msg;
+  loginBtn.disabled=false;loginBtn.textContent="로그인";
+}
+function loginErrorText(code){
+  if(["auth/invalid-credential","auth/wrong-password","auth/user-not-found","auth/invalid-email"].includes(code))
+    return "이메일 또는 비밀번호가 맞지 않아요.";
+  if(code==="auth/too-many-requests") return "로그인 시도가 너무 많아요. 잠시 후 다시 시도해 주세요.";
+  if(code==="auth/network-request-failed") return "인터넷 연결을 확인해 주세요.";
+  if(code==="auth/operation-not-allowed") return "이메일 로그인이 아직 켜져 있지 않아요. Firebase 콘솔 설정이 필요해요.";
+  return "로그인하지 못했어요. ("+code+")";
+}
+document.getElementById("login-form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const email=document.getElementById("login-email").value.trim();
+  const pw=document.getElementById("login-pw").value;
+  loginErr.textContent="";loginBtn.disabled=true;loginBtn.textContent="확인 중...";
+  try{ await signInWithEmailAndPassword(auth,email,pw); }
+  catch(err){ showLogin(loginErrorText(err.code)); }
 });
-onSnapshot(query(collection(db,"orders"),orderBy("createdAt","desc")),snap=>{
-  orders=snap.docs.map(d=>({...d.data(),id:d.id}));
-  renderOrders();
+document.getElementById("login-reset").addEventListener("click",async()=>{
+  const email=document.getElementById("login-email").value.trim();
+  if(!email){ loginErr.textContent="이메일을 입력한 뒤 눌러 주세요."; return; }
+  try{ await sendPasswordResetEmail(auth,email); loginErr.textContent=""; showToast("비밀번호 재설정 메일을 보냈어요."); }
+  catch(err){ loginErr.textContent=loginErrorText(err.code); }
+});
+document.getElementById("logout-btn").addEventListener("click",async()=>{
+  if(!confirm("로그아웃할까요?")) return;
+  await signOut(auth);
+});
+let pendingLoginMsg=""; // 로그아웃 직후 로그인 화면에 보여줄 안내
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    if(dataUnsubs.length){ location.reload(); return; } // 로그아웃: 화면에 남은 데이터 정리
+    showLogin(pendingLoginMsg);
+    pendingLoginMsg="";
+    return;
+  }
+  let isAdmin=false;
+  try{
+    const snap=await getDoc(doc(db,"admins",(user.email||"").toLowerCase()));
+    isAdmin=snap.exists();
+  }catch(err){ console.error(err); }
+  if(!isAdmin){
+    pendingLoginMsg="관리자로 등록되지 않은 계정이에요. 관리자에게 등록을 요청해 주세요.";
+    await signOut(auth);
+    return;
+  }
+  loginScreen.style.display="none";
+  document.getElementById("logout-btn").title=user.email||"";
+  if(firstLoad) document.getElementById("loading").style.display="flex";
+  startData();
 });
 
 // ── 필터 ──
