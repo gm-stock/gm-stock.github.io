@@ -155,11 +155,48 @@ body.dark #loading{background:#0a0a0f}
 body.light #loading{background:#f5f5f7}
 .spinner{width:36px;height:36px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── 관리자 로그인 ── */
+#login-screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;z-index:1000}
+body.dark #login-screen{background:#0a0a0f}
+body.light #login-screen{background:#f5f5f7}
+.login-card{width:100%;max-width:340px;text-align:center}
+.login-card input{width:100%;padding:13px 14px;margin-bottom:10px;border-radius:12px;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;border:1.5px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:inherit}
+body.light .login-card input{border-color:rgba(0,0,0,0.12);background:#fff}
+.login-card input:focus{border-color:#6366f1}
+.login-btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:inherit;color:#fff;background:linear-gradient(135deg,#3b82f6,#6366f1);cursor:pointer}
+.login-btn:disabled{opacity:.6;cursor:default}
+.login-err{min-height:20px;margin:10px 0 0;font-size:13px;color:#f87171;line-height:1.5}
+.login-link{margin-top:14px;background:none;border:none;font-size:12.5px;color:#64748b;font-family:inherit;cursor:pointer;text-decoration:underline}
+.logout-btn{padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8}
+body.light .logout-btn{border-color:rgba(0,0,0,0.12);color:#475569}
+/* ── 담당자(manager) 역할: 재고·프로그램 관리 기능 숨김 ── */
+html.role-manager .owner-only,
+html.role-manager #fab-add-item,
+html.role-manager #nav-batch,
+html.role-manager .delete-order-btn,
+html.role-manager .item-name-btn,
+html.role-manager .item-qty-btn,
+html.role-manager .opt-qty-btn,
+html.role-manager .card-actions:has(.item-qty-btn){display:none!important}
 </style>
 </head>
 <body class="dark">
 <div id="loading"><div class="spinner"></div><div style="font-size:14px;color:#475569">연결 중...</div></div>
 <div id="toast"></div>
+
+<!-- 관리자 로그인 -->
+<div id="login-screen">
+  <form class="login-card" id="login-form" autocomplete="on">
+    <div style="font-size:44px;margin-bottom:14px">🔐</div>
+    <div style="font-size:18px;font-weight:800;margin-bottom:6px">관리자 로그인</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:22px">등록된 관리자 계정으로 로그인해 주세요</div>
+    <input id="login-email" type="email" placeholder="이메일" autocomplete="username" required>
+    <input id="login-pw" type="password" placeholder="비밀번호" autocomplete="current-password" required>
+    <button class="login-btn" id="login-submit" type="submit">로그인</button>
+    <div class="login-err" id="login-err"></div>
+    <button class="login-link" id="login-reset" type="button">비밀번호를 잊으셨나요?</button>
+  </form>
+</div>
 
 <!-- 헤더 -->
 <div id="app-header">
@@ -170,7 +207,10 @@ body.light #loading{background:#f5f5f7}
       <div class="stat-lbl" id="header-sub">연결 중...</div>
     </div>
   </div>
-  <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">🌙</div></button>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="logout-btn" id="logout-btn" type="button" title="">로그아웃</button>
+    <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">🌙</div></button>
+  </div>
 </div>
 
 <div id="app-body">
@@ -182,7 +222,7 @@ body.light #loading{background:#f5f5f7}
     <div style="height:80px"></div>
   </div>
   <!-- 상품 추가 FAB -->
-  <button onclick="window.openAddItemModal()" style="position:fixed;bottom:calc(60px + 16px);right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;z-index:90" id="add-item-fab">＋</button>
+  <button id="fab-add-item" onclick="window.openAddItemModal()" style="position:fixed;bottom:calc(60px + 16px);right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;z-index:90" id="add-item-fab">＋</button>
   </div>
 
   <div id="tab-batch" class="tab-pane"><div class="page-scroll">
@@ -243,16 +283,19 @@ body.light #loading{background:#f5f5f7}
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getFirestore,collection,doc,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,doc,getDoc,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const db=getFirestore(initializeApp({
+const app=initializeApp({
   apiKey:"AIzaSyBHWNK9K1Ack5-Sj02PAuVbCu2gcOSnpMY",
   authDomain:"gm-stock-management.firebaseapp.com",
   projectId:"gm-stock-management",
   storageBucket:"gm-stock-management.firebasestorage.app",
   messagingSenderId:"590013505498",
   appId:"1:590013505498:web:59343cee0d152ee97c6ae3"
-}));
+});
+const db=getFirestore(app);
+const auth=getAuth(app);
 
 window.closeModal=id=>{document.getElementById(id)?.remove();};
 let items=[],orders=[];
@@ -314,17 +357,88 @@ window.closeModal=id=>document.getElementById(id).style.display="none";
 document.querySelectorAll(".modal-bg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.style.display="none";}));
 
 // ── Firebase ──
+// 데이터는 관리자 로그인이 확인된 뒤에만 불러온다 (startData).
 let firstLoad=true;
-onSnapshot(collection(db,"items"),snap=>{
-  items=snap.docs.map(d=>({...d.data(),id:d.id}));
-  if(firstLoad){document.getElementById("loading").style.display="none";firstLoad=false;}
-  const total=items.reduce((a,i)=>a+totalQty(i),0);
-  document.getElementById("header-sub").textContent=`${items.length}종 · ${total.toLocaleString()}개`;
-  renderStock();
+let dataUnsubs=[];
+function startData(){
+  if(dataUnsubs.length) return;
+  dataUnsubs.push(onSnapshot(collection(db,"items"),snap=>{
+    items=snap.docs.map(d=>({...d.data(),id:d.id}));
+    if(firstLoad){document.getElementById("loading").style.display="none";firstLoad=false;}
+    const total=items.reduce((a,i)=>a+totalQty(i),0);
+    document.getElementById("header-sub").textContent=`${items.length}종 · ${total.toLocaleString()}개`;
+    renderStock();
+  },err=>{console.error(err);showToast("재고를 불러오지 못했어요: "+err.message,"#f87171");}));
+  dataUnsubs.push(onSnapshot(query(collection(db,"orders"),orderBy("createdAt","desc")),snap=>{
+    orders=snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderOrders();
+  },err=>{console.error(err);showToast("출고요청을 불러오지 못했어요: "+err.message,"#f87171");}));
+}
+
+// ── 관리자 로그인 ──
+// 관리자 명단: Firestore admins 컬렉션, 문서 ID = 관리자 이메일(소문자).
+// 사람을 추가·삭제할 때는 Firebase 콘솔에서 admins 문서만 추가·삭제하면 된다.
+const loginScreen=document.getElementById("login-screen");
+const loginErr=document.getElementById("login-err");
+const loginBtn=document.getElementById("login-submit");
+function showLogin(msg=""){
+  document.getElementById("loading").style.display="none";
+  loginScreen.style.display="flex";
+  loginErr.textContent=msg;
+  loginBtn.disabled=false;loginBtn.textContent="로그인";
+}
+function loginErrorText(code){
+  if(["auth/invalid-credential","auth/wrong-password","auth/user-not-found","auth/invalid-email"].includes(code))
+    return "이메일 또는 비밀번호가 맞지 않아요.";
+  if(code==="auth/too-many-requests") return "로그인 시도가 너무 많아요. 잠시 후 다시 시도해 주세요.";
+  if(code==="auth/network-request-failed") return "인터넷 연결을 확인해 주세요.";
+  if(code==="auth/operation-not-allowed") return "이메일 로그인이 아직 켜져 있지 않아요. Firebase 콘솔 설정이 필요해요.";
+  return "로그인하지 못했어요. ("+code+")";
+}
+document.getElementById("login-form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const email=document.getElementById("login-email").value.trim();
+  const pw=document.getElementById("login-pw").value;
+  loginErr.textContent="";loginBtn.disabled=true;loginBtn.textContent="확인 중...";
+  try{ await signInWithEmailAndPassword(auth,email,pw); }
+  catch(err){ showLogin(loginErrorText(err.code)); }
 });
-onSnapshot(query(collection(db,"orders"),orderBy("createdAt","desc")),snap=>{
-  orders=snap.docs.map(d=>({...d.data(),id:d.id}));
-  renderOrders();
+document.getElementById("login-reset").addEventListener("click",async()=>{
+  const email=document.getElementById("login-email").value.trim();
+  if(!email){ loginErr.textContent="이메일을 입력한 뒤 눌러 주세요."; return; }
+  try{ await sendPasswordResetEmail(auth,email); loginErr.textContent=""; showToast("비밀번호 재설정 메일을 보냈어요."); }
+  catch(err){ loginErr.textContent=loginErrorText(err.code); }
+});
+document.getElementById("logout-btn").addEventListener("click",async()=>{
+  if(!confirm("로그아웃할까요?")) return;
+  await signOut(auth);
+});
+let pendingLoginMsg=""; // 로그아웃 직후 로그인 화면에 보여줄 안내
+let userRole="manager"; // 로그인 확인 전에는 가장 낮은 권한으로 둔다
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    if(dataUnsubs.length){ location.reload(); return; } // 로그아웃: 화면에 남은 데이터 정리
+    showLogin(pendingLoginMsg);
+    pendingLoginMsg="";
+    return;
+  }
+  let isAdmin=false;
+  try{
+    const snap=await getDoc(doc(db,"admins",(user.email||"").toLowerCase()));
+    isAdmin=snap.exists();
+    // role: "owner"=최고관리자(전체 기능). 그 외(비어 있음·오타 포함)는 안전하게 담당자(manager)로 본다.
+    if(isAdmin) userRole=(snap.data()?.role==="owner")?"owner":"manager";
+  }catch(err){ console.error(err); }
+  document.documentElement.classList.toggle("role-manager",userRole!=="owner");
+  if(!isAdmin){
+    pendingLoginMsg="관리자로 등록되지 않은 계정이에요. 관리자에게 등록을 요청해 주세요.";
+    await signOut(auth);
+    return;
+  }
+  loginScreen.style.display="none";
+  document.getElementById("logout-btn").title=user.email||"";
+  if(firstLoad) document.getElementById("loading").style.display="flex";
+  startData();
 });
 
 // ── 필터 ──
@@ -1537,7 +1651,7 @@ function renderOrderCard(order){
       else action="window.setStatus('"+order.id+"','"+step+"')";
       items+="<div class=\"dd-item\" data-action=\""+escAttr(action)+"\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:"+(sst.color||"#e2e8f0")+";border-bottom:1px solid rgba(255,255,255,0.05)\">"+(sst.icon||"")+" "+step+"으로 변경</div>";
     });
-    items+="<div class=\"dd-item\" data-action=\"window.deleteOrder('"+order.id+"')\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:#f87171\">🗑️ 삭제</div>";
+    items+="<div class=\"dd-item owner-only\" data-action=\"window.deleteOrder('"+order.id+"')\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;font-weight:600;cursor:pointer;color:#f87171\">🗑️ 삭제</div>";
     ddHtml="<div id=\"dd-"+order.id+"\" class=\"status-dropdown\" style=\"display:none;position:fixed;background:#1e2235;border:1px solid rgba(255,255,255,0.12);border-radius:10px;z-index:9999;min-width:150px;max-height:60vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)\">"+items+"</div>";
   }
 
@@ -1689,6 +1803,19 @@ document.addEventListener("click", e=>{
   if(photoImg){ window.viewPhoto(photoImg.dataset.src); return; }
   // 드롭다운 외부 클릭 닫기
   document.querySelectorAll(".status-dropdown").forEach(dd=>{ dd.style.display="none"; });
+});
+
+// ── 역할별 기능 제한 ──
+// 담당자(manager)는 재고·프로그램 관리 기능을 쓸 수 없다. 버튼이 숨겨져 있어도 함수 단계에서 한 번 더 막는다.
+// (출고요청 승인·반려·상태 변경·취소·매장명 수정, 조회, 쉬핑 리스트·인쇄는 담당자도 가능)
+["openAddItemModal","confirmAddItem","openItemNameModal","confirmItemName","openQtyModal","confirmQtyModal",
+ "handleBatchOrderExcel","confirmBatchOrders","deleteOrder"].forEach(name=>{
+  const original=window[name];
+  if(typeof original!=="function") return;
+  window[name]=function(...args){
+    if(userRole!=="owner"){ showToast("이 기능은 최고관리자만 사용할 수 있어요","#f87171"); return; }
+    return original.apply(this,args);
+  };
 });
 
 // Service Worker 등록
