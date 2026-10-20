@@ -178,6 +178,7 @@ html.role-manager .item-name-btn,
 html.role-manager .item-qty-btn,
 html.role-manager .opt-qty-btn,
 html.role-manager .card-actions:has(.item-qty-btn){display:none!important}
+html.role-manager .item-img{pointer-events:none;cursor:default!important}
 </style>
 </head>
 <body class="dark">
@@ -1809,7 +1810,7 @@ document.addEventListener("click", e=>{
 // 담당자(manager)는 재고·프로그램 관리 기능을 쓸 수 없다. 버튼이 숨겨져 있어도 함수 단계에서 한 번 더 막는다.
 // (출고요청 승인·반려·상태 변경·취소·매장명 수정, 조회, 쉬핑 리스트·인쇄는 담당자도 가능)
 ["openAddItemModal","confirmAddItem","openItemNameModal","confirmItemName","openQtyModal","confirmQtyModal",
- "handleBatchOrderExcel","confirmBatchOrders","deleteOrder"].forEach(name=>{
+ "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto"].forEach(name=>{
   const original=window[name];
   if(typeof original!=="function") return;
   window[name]=function(...args){
