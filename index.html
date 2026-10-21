@@ -13,6 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <title>재고관리</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -179,9 +180,92 @@ body.light .login-langs button{border-color:rgba(0,0,0,0.12);color:#475569}
 .login-langs button.on{border-color:#6366f1;color:#a5b4fc}
 .logout-btn{padding:6px 9px;border-radius:99px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.07);color:inherit;white-space:nowrap}
 body.light .logout-btn{border-color:rgba(0,0,0,0.12);background:#fff}
+
+/* ══ 새 디자인 바탕 (2026-10 리디자인 1단계) ══
+   색·글꼴·모서리만 바꾼다. 기능과 화면 구성은 그대로. */
+body.light{--bg:#f7f6f3;--surface:#ffffff;--ink:#111111;--sub:#4a4a4a;--muted:#8a8780;--line:#dcdad4;--line2:#ebe9e4;--low:#b3001b;--accent:#c2410c;--accent-ink:#ffffff;--hover:#efede8}
+body.dark{--bg:#121211;--surface:#1b1b1a;--ink:#f1efea;--sub:#c3c0b8;--muted:#8f8c85;--line:#34332f;--line2:#262523;--low:#ff5c70;--accent:#f0782f;--accent-ink:#111111;--hover:#242422}
+body.light,body.dark{background:var(--bg);color:var(--ink);font-family:'Roboto','Nanum Gothic','Pretendard Variable','Pretendard',sans-serif;-webkit-font-smoothing:antialiased}
+body.light ::-webkit-scrollbar-thumb,body.dark ::-webkit-scrollbar-thumb{background:var(--line);border-radius:0}
+/* 헤더·하단 메뉴 */
+body.light #app-header,body.dark #app-header{background:var(--ink);color:var(--bg);border-bottom:0;backdrop-filter:none}
+body.light #app-header .stat-lbl,body.dark #app-header .stat-lbl{color:var(--bg);opacity:.7}
+.logo-box{border-radius:0;background:var(--bg)!important;color:var(--ink);font-size:11px;font-weight:900;letter-spacing:.06em}
+body.light .theme-toggle,body.dark .theme-toggle{border-radius:0;background:transparent;border:1px solid currentColor;color:var(--bg)}
+.theme-knob{border-radius:0;background:var(--bg);box-shadow:none}
+.logout-btn,body.light .logout-btn{border-radius:0;border:1px solid var(--bg)!important;background:transparent!important;color:var(--bg)!important}
+#app-header [onclick="toggleLangMenu()"]{border-radius:0!important;background:transparent!important;border:1px solid var(--bg)!important;color:var(--bg)!important}
+#lang-menu{border-radius:0!important;background:var(--surface)!important;border:1px solid var(--ink)!important;box-shadow:0 8px 24px rgba(0,0,0,.25)!important}
+#lang-menu .lang-opt{color:var(--ink)!important}
+#lang-menu .lang-opt:hover{background:var(--hover)}
+body.light #bottom-nav,body.dark #bottom-nav{background:var(--surface);border-top:1px solid var(--ink)}
+body.light .nav-btn,body.dark .nav-btn{color:var(--muted)}
+body.light .nav-btn.active,body.dark .nav-btn.active{color:var(--ink);font-weight:900}
+.nav-btn.active::before{content:"";position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--ink)}
+.nav-badge{background:var(--accent);color:var(--accent-ink);border-radius:0}
+/* 요약 숫자·필터 */
+.stat-tile{border-radius:0}
+body.light .stat-tile,body.dark .stat-tile{background:var(--surface);border:1px solid var(--line)}
+body.light .stat-lbl,body.dark .stat-lbl,body.light .filter-label,body.dark .filter-label{color:var(--sub);letter-spacing:.04em}
+.fbtn{border-radius:0;letter-spacing:.03em}
+body.light .fbtn,body.dark .fbtn{background:var(--surface);border:1px solid var(--line);color:var(--sub)}
+.fbtn.on{background:var(--ink)!important;border-color:var(--ink)!important;color:var(--bg)!important}
+/* 컬렉션 묶음·상품 카드 */
+body.light .coll-header,body.dark .coll-header{background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:0;padding:10px 2px;letter-spacing:.08em}
+.coll-header.collapsed{border-radius:0!important}
+body.light .items-wrap,body.dark .items-wrap{background:transparent;border:0;border-radius:0;padding:10px 0 0}
+.item-card{border-radius:0}
+body.light .item-card,body.dark .item-card{background:var(--surface);border:1px solid var(--line)}
+.item-card.low-stock{border-color:var(--low)!important}
+body.light .item-img,body.dark .item-img{background:var(--line2)}
+body.light .item-name,body.dark .item-name{color:var(--ink);font-weight:900;letter-spacing:.02em}
+body.light .item-sub,body.dark .item-sub,body.light .unit,body.dark .unit{color:var(--muted)}
+body.light .opts-panel,body.dark .opts-panel{background:transparent}
+body.light .opt-name,body.dark .opt-name{color:var(--sub)}
+.btn-cart{border-radius:0;background:var(--surface);border:1px solid var(--ink);color:var(--ink);letter-spacing:.04em}
+.btn-cart:active{background:var(--ink);color:var(--bg)}
+/* 장바구니·출고요청 목록 */
+.cart-item{border-radius:0}
+body.light .cart-item,body.dark .cart-item{background:var(--surface);border:1px solid var(--line)}
+body.light .week-header,body.dark .week-header{background:transparent;border:0;border-bottom:2px solid var(--ink);border-radius:0;padding:10px 2px}
+body.light .week-cycle,body.dark .week-cycle{background:transparent;border-left:0;border-right:0}
+.order-list{border-radius:0}
+body.light .order-list,body.dark .order-list{border:1px solid var(--line);border-top:0;background:var(--surface)}
+body.light .order-row:nth-child(even),body.dark .order-row:nth-child(even){background:transparent}
+.order-row+.order-row{border-top:1px solid var(--line2)}
+.status-badge{border-radius:0}
+.item-chip{border-radius:0}
+body.light .item-chip,body.dark .item-chip{background:var(--bg);border:1px solid var(--line);color:var(--sub)}
+/* 창·입력칸·버튼 */
+.modal-sheet{border-radius:0;border-top:2px solid var(--ink)}
+body.light .modal-sheet,body.dark .modal-sheet{background:var(--surface)}
+.modal-handle{border-radius:0}
+body.light .modal-handle,body.dark .modal-handle{background:var(--line)}
+.modal-title{letter-spacing:.04em}
+body.light .field-label,body.dark .field-label{color:var(--sub)}
+.field-input{border-radius:0}
+body.light .field-input,body.dark .field-input{background:var(--bg);border:1px solid var(--line);color:var(--ink)}
+.field-input:focus{border-color:var(--ink)!important}
+.btn-primary{border-radius:0!important;background:var(--accent);color:var(--accent-ink);font-weight:900;letter-spacing:.05em}
+.btn-secondary-sm{border-radius:0}
+body.light .btn-secondary-sm,body.dark .btn-secondary-sm{background:transparent;border:1px solid var(--line);color:var(--sub)}
+.opt-sel-btn{border-radius:0}
+body.light .opt-sel-btn,body.dark .opt-sel-btn{background:var(--surface);border:1px solid var(--line);color:var(--sub)}
+.opt-sel-btn.sel{border-color:var(--ink)!important;background:var(--ink)!important;color:var(--bg)!important}
+#toast{border-radius:0}
+body.light #toast,body.dark #toast{background:var(--ink);color:var(--bg)!important;border:0}
+/* 불러오는 중·로그인 */
+body.light #loading,body.dark #loading,body.light #login-screen,body.dark #login-screen{background:var(--bg)}
+.spinner{border-color:var(--line);border-top-color:var(--ink)}
+.login-card input,body.light .login-card input{border-radius:0;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.login-card input:focus{border-color:var(--ink)}
+.login-btn{border-radius:0;background:var(--ink);color:var(--bg);letter-spacing:.06em}
+.login-err{color:var(--low)}
+.login-langs button,body.light .login-langs button{border-radius:0;border-color:var(--line);color:var(--sub)}
+.login-langs button.on{border-color:var(--ink);color:var(--ink);background:var(--surface)}
 </style>
 </head>
-<body class="dark">
+<body class="light">
 <div id="loading"><div class="spinner"></div><div style="font-size:14px;color:#475569">연결 중...</div></div>
 <div id="toast"></div>
 
@@ -288,7 +372,7 @@ body.light .logout-btn{border-color:rgba(0,0,0,0.12);background:#fff}
       </div>
     </div>
     <button class="logout-btn" id="logout-btn" type="button" data-i18n="login_logout">로그아웃</button>
-    <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">🌙</div></button>
+    <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">☀️</div></button>
   </div>
 </div>
 
@@ -491,7 +575,11 @@ function statusBadgeHTML(status){
 let filterYear="전체",filterColl="전체";
 let collapsedGroups=new Set();
 let collapsedWeeks=new Set();
-let showLowOnly=false,isDark=true;
+let showLowOnly=false,isDark=false;
+// 화면 밝기: 기본은 밝은 화면, 마지막으로 고른 값을 기억한다
+try{ isDark=localStorage.getItem("gm-theme")==="dark"; }catch(e){}
+document.body.className=isDark?"dark":"light";
+document.getElementById("theme-knob").textContent=isDark?"🌙":"☀️";
 let cartTarget=null,cartSelOpt=null;
 
 function isSet(i){return i.name&&i.name.toUpperCase().includes("SET");}
@@ -524,6 +612,7 @@ function showToast(msg,color="#34d399"){
 
 window.toggleTheme=()=>{
   isDark=!isDark;
+  try{ localStorage.setItem("gm-theme",isDark?"dark":"light"); }catch(e){}
   document.body.className=isDark?"dark":"light";
   document.getElementById("theme-knob").textContent=isDark?"🌙":"☀️";
   renderStock();renderOrders();
