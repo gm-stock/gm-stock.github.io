@@ -278,6 +278,46 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
 .stock-meter{height:3px;background:var(--line2);margin-top:4px}
 .stock-meter i{display:block;height:100%;background:var(--ink)}
 .stock-meter.low i{background:var(--low)}
+
+/* ══ 시연판 화면 구성 1: 브랜드 헤더 · 물결 띠 · 검색/탭 · 출고 요청 띠 ══ */
+body.light #app-header,body.dark #app-header{padding:16px 16px 12px;align-items:flex-end}
+.brand-title{font-weight:900;font-size:19px;letter-spacing:.14em;line-height:1;color:var(--hfg)}
+.brand-sub{font-size:10px;letter-spacing:.2em;margin-top:6px;color:var(--hfg);opacity:.7;white-space:nowrap}
+.brand-sub #header-sub{letter-spacing:.02em;margin-left:6px;opacity:.85}
+.scallop{height:10px;flex-shrink:0;background:radial-gradient(circle at 8px 0,transparent 6.5px,#111111 7px) repeat-x;background-size:16px 10px}
+body.dark .scallop{background-image:radial-gradient(circle at 8px 0,transparent 6.5px,#0b0b0b 7px)}
+#store-toolbar{display:flex;gap:8px;padding:10px 14px;align-items:center;border-bottom:1px solid var(--line);background:var(--surface);flex-shrink:0}
+.tb-search{flex:1;min-width:0;display:flex;border:1px solid var(--ink)}
+.tb-search input{flex:1;min-width:0;border:0;padding:9px 10px;background:transparent;color:var(--ink);font-size:14px}
+.tb-tabs{display:flex;border:1px solid var(--ink);flex-shrink:0}
+.tb-tabs button{border:0;background:transparent;color:var(--ink);padding:8px 12px;font-weight:700;font-size:13px;white-space:nowrap}
+.tb-tabs button.on{background:var(--ink);color:var(--bg)}
+#bottom-nav{display:none!important}
+/* 필터: 요약 숫자 칸 대신 칩 한 줄 (휴대폰은 옆으로 넘김) */
+#stock-stats{display:none!important}
+.fbtn{display:inline-flex;align-items:center;gap:6px}
+.fbtn .coll-dot{width:8px;height:8px}
+.fbtn .fcount{display:none;margin-left:auto;font-weight:400;color:var(--muted)}
+.fbtn.on .fcount{color:inherit;opacity:.8}
+.fbtn.low-chip{color:var(--low)!important;border-color:var(--low)!important}
+.fbtn.low-chip.on{background:var(--low)!important;color:#fff!important}
+@media(max-width:1099px){
+  .filter-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+  .filter-label{display:none}
+}
+@media(max-width:600px){
+  .brand-title{font-size:16px;letter-spacing:.12em}
+  .brand-sub{font-size:9px;letter-spacing:.16em}
+  .brand-sub #header-sub,#lang-label{display:none}
+  #app-header .logout-btn,#app-header [onclick="toggleLangMenu()"]{padding:5px 7px!important;font-size:10px!important}
+  #app-header>div:last-child{gap:5px!important}
+  .theme-toggle{width:42px;height:24px}
+  .theme-knob{width:18px;height:18px}
+  body.light .theme-knob{left:21px}
+}
+#order-bar{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;width:100%;border:0;background:var(--accent);color:var(--accent-ink);padding:15px 16px calc(15px + env(safe-area-inset-bottom));font-weight:900;font-size:14px;letter-spacing:.06em}
+body[data-tab="cart"] #order-bar{display:none}
+@media(min-width:1100px){#order-bar{display:none}}
 /* ══ 리디자인 4단계: PC(넓은 화면)에서는 장바구니를 오른쪽에 항상 표시 ══ */
 @media(min-width:1100px){
   #app-body{flex-direction:row}
@@ -372,12 +412,9 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
 
 <!-- 헤더 -->
 <div id="app-header">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div class="logo-box">📦</div>
-    <div>
-      <div style="font-weight:800;font-size:14px" data-i18n="app_title">재고관리</div>
-      <div class="stat-lbl" id="header-sub">연결 중...</div>
-    </div>
+  <div class="brand">
+    <div class="brand-title">GENTLE MONSTER</div>
+    <div class="brand-sub">PROPS &amp; FIXTURES STOCK <span id="header-sub">연결 중...</span></div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <div style="position:relative">
@@ -400,6 +437,14 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
   </div>
 </div>
 
+<div class="scallop"></div>
+<div id="store-toolbar">
+  <div class="tb-search"><input id="stock-search" type="search" data-i18n-ph="lbl_itemname" placeholder="상품명" autocomplete="off"></div>
+  <div class="tb-tabs">
+    <button type="button" id="top-stock" class="on" onclick="switchTab('stock')" data-i18n="nav_stock">재고</button>
+    <button type="button" id="top-orders" onclick="switchTab('orders')" data-i18n="nav_orders">출고요청</button>
+  </div>
+</div>
 <div id="app-body">
   <div id="tab-stock" class="tab-pane active"><div class="page-scroll">
     <div class="stat-row" id="stock-stats"></div>
@@ -427,6 +472,7 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
   </div></div>
 </div>
 
+<button type="button" id="order-bar" onclick="switchTab('cart')"><span data-i18n="btn_order">발주하기</span><span id="order-bar-n">0</span></button>
 <div id="bottom-nav">
   <button class="nav-btn active" id="nav-stock" onclick="switchTab('stock')"><span class="nav-icon">📦</span><span data-i18n="nav_stock">재고</span></button>
   <button class="nav-btn" id="nav-cart" onclick="switchTab('cart')"><span class="nav-icon">🛒</span><span data-i18n="nav_cart">장바구니</span><div class="nav-badge" id="cart-badge" style="display:none">0</div></button>
@@ -599,7 +645,7 @@ function statusBadgeHTML(status){
 let filterYear="전체",filterColl="전체";
 let collapsedGroups=new Set();
 let collapsedWeeks=new Set();
-let showLowOnly=false,isDark=false;
+let showLowOnly=false,isDark=false,stockSearch="";
 // 화면 밝기: 기본은 밝은 화면, 마지막으로 고른 값을 기억한다
 try{ isDark=localStorage.getItem("gm-theme")==="dark"; }catch(e){}
 document.body.className=isDark?"dark":"light";
@@ -649,6 +695,10 @@ window.switchTab=tab=>{
   });
   document.getElementById("tab-"+tab).classList.add("active");
   document.getElementById("nav-"+tab).classList.add("active");
+  // 위쪽 탭: 장바구니 화면일 때는 '재고'를 켜 둔다 (재고에서 이어지는 화면)
+  document.getElementById("top-stock")?.classList.toggle("on",tab!=="orders");
+  document.getElementById("top-orders")?.classList.toggle("on",tab==="orders");
+  document.body.dataset.tab=tab;
   if(tab==="cart")renderCart();
   if(tab==="orders")renderOrders();
 };
@@ -830,6 +880,7 @@ function updateCartBadge(){
   const badge=document.getElementById("cart-badge");
   if(total>0){badge.style.display="flex";badge.textContent=total;}
   else badge.style.display="none";
+  const ob=document.getElementById("order-bar-n"); if(ob) ob.textContent=nu(total,"unit_pcs");
   // 넓은 화면에서는 장바구니가 항상 보이므로 바로 다시 그린다
   if(window.matchMedia("(min-width:1100px)").matches) renderCart();
 }
@@ -1328,10 +1379,13 @@ function renderStock(){
   }).join("");
   document.getElementById("cl-filters").innerHTML=["전체",...colls].map(c=>{
     const on=ac===c?"on":"";
-    return`<button class="fbtn ${on}" onclick="window.setFC('${c}')">${c==="전체"?t("filter_all"):c}</button>`;
-  }).join("");
+    const n=c==="전체"?byYear.length:byYear.filter(i=>i.collection===c).length;
+    return`<button class="fbtn ${on}" onclick="window.setFC('${c}')" style="${c==="전체"?"":collVars(c)}">${c==="전체"?"":'<span class="coll-dot"></span>'}${c==="전체"?t("filter_all"):c}<span class="fcount">${n}</span></button>`;
+  }).join("")+`<button class="fbtn low-chip ${showLowOnly?"on":""}" onclick="window.toggleLowOnly()">${t("stat_low")}<span class="fcount">${low.length}</span></button>`;
 
+  const sq=stockSearch.trim().toUpperCase();
   const filtered=items.filter(i=>
+    (!sq||[i.name,i.collection,i.material].some(v=>String(v||"").toUpperCase().includes(sq)))&&
     (showLowOnly?isLow(i):true)&&
     (filterYear==="전체"||String(i.year||"")==filterYear)&&
     (ac==="전체"||i.collection===ac)
@@ -1343,7 +1397,7 @@ function renderStock(){
   });
 
   if(!Object.keys(grouped).length){
-    document.getElementById("stock-groups").innerHTML=`<div style="text-align:center;padding:50px;font-size:14px;color:var(--muted)">${t("loading")}</div>`;return;
+    document.getElementById("stock-groups").innerHTML=`<div style="text-align:center;padding:50px;font-size:14px;color:var(--muted)">${items.length?t("search_none"):t("loading")}</div>`;return;
   }
 
   // 그룹별 최소 _order 기준 정렬 (프로그램 = 시트 동일 순서)
@@ -1395,6 +1449,13 @@ function renderStock(){
       ${!isCol?`<div class="items-wrap"><div class="item-grid">${cards}</div></div>`:""}
     </div>`;
   }}).join("");
+}
+
+// ── 재고 검색 (상품명·컬렉션·소재) ──
+document.body.dataset.tab="stock";
+{
+  const si=document.getElementById("stock-search"); let st=null;
+  si&&si.addEventListener("input",()=>{ clearTimeout(st); st=setTimeout(()=>{ stockSearch=si.value; if(!document.getElementById("tab-stock").classList.contains("active")) switchTab("stock"); renderStock(); },150); });
 }
 
 // ── 렌더 장바구니 ──
