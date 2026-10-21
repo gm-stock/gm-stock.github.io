@@ -285,6 +285,42 @@ body.dark .scallop{background-image:radial-gradient(circle at 8px 0,transparent 
 .kpi.acc .v{color:var(--accent)}
 .kpi.low .v{color:var(--low)}
 
+
+/* ══ 시연판 화면 구성: 재고 관리 표 ══ */
+#stock-stats{display:none!important}
+.coll-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--dot);flex-shrink:0;vertical-align:middle}
+.fbtn{display:inline-flex;align-items:center;gap:6px}
+.fbtn .coll-dot{width:8px;height:8px}
+.fbtn.low-chip{color:var(--low)!important;border-color:var(--low)!important}
+.fbtn.low-chip.on{background:var(--low)!important;color:#fff!important}
+.s-table-wrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface)}
+.s-table{border-collapse:collapse;width:100%;font-size:12px;min-width:680px}
+.s-table th{text-align:left;font-size:11px;letter-spacing:.06em;color:var(--sub);font-weight:700;padding:9px 10px;border-bottom:1px solid var(--ink);white-space:nowrap}
+.s-table td{padding:7px 10px;border-bottom:1px solid var(--line2);vertical-align:middle;color:var(--ink)}
+.s-table tr.first td{border-top:1px solid var(--line)}
+.s-thumb{width:44px;height:44px;aspect-ratio:auto;cursor:pointer}
+.item-img.tinted{background:var(--tint)}
+body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--surface))}
+.s-thumb .ph-name{font-size:7px;font-weight:900;color:var(--dot);text-align:center;padding:2px;line-height:1.1}
+.c-coll{white-space:nowrap;font-weight:700;font-size:11px;letter-spacing:.04em}
+.c-name b{font-weight:900}
+.c-name .item-name-btn{padding:1px 5px;font-size:10px;background:var(--bg);border:1px solid var(--line);cursor:pointer}
+.c-sub{font-size:10px;color:var(--muted)}
+.c-spec{color:var(--muted);font-size:11px}
+.c-qty{white-space:nowrap;font-weight:800;font-size:13px}
+.c-qty .unit{font-weight:400;font-size:10px;color:var(--muted)}
+.lowtxt{color:var(--low)}
+.low-pill{display:inline-block;font-size:9px;font-weight:900;letter-spacing:.08em;padding:1px 5px;border:1px solid var(--low);color:var(--low);margin-left:4px}
+.c-act button{padding:5px 9px;font-size:11px;font-weight:700;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+@media(max-width:600px){
+  .s-table{min-width:0}
+  .s-table th:nth-child(2),.s-table td:nth-child(2),.s-table th:nth-child(5),.s-table td:nth-child(5){display:none}
+  .s-table td,.s-table th{padding:7px 6px}
+}
+@media(max-width:1099px){
+  #tab-stock .filter-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  #tab-stock .filter-label{display:none}
+}
 /* ══ 시연판 화면 구성: 주문 목록 표 ══ */
 .st-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .st-chips .fbtn .st-n{font-weight:400;opacity:.75;margin-left:2px}
@@ -603,6 +639,13 @@ window.toggleGroup=gk=>{collapsedGroups.has(gk)?collapsedGroups.delete(gk):colla
 window.toggleLowOnly=()=>{showLowOnly=!showLowOnly;renderStock();};
 
 // ── 렌더 재고 ──
+// 컬렉션 색 (매장 화면과 같은 색)
+const COLL_COLORS={
+  "MM2":["#fff8e1","#c99a1e"],"MM":["#fff8e1","#b08a2a"],"VEGGIE":["#e8f5e9","#4f8f5a"],"PRADA":["#fff3e0","#d9822b"],
+  "BOLD":["#e3f2fd","#3d7cc9"],"BOUQUET":["#fce4ec","#c95b85"],"JEWELRY":["#e8eaf6","#5a63b8"],
+  "POCKET X BRATZ":["#f3e5f5","#9c4fb0"],"FALL SEASON":["#fbe9e7","#c4633f"],"CIRCUIT X DISNEY":["#e0f7fa","#2a9aa8"]
+};
+function collVars(c){const k=COLL_COLORS[String(c||"").trim().toUpperCase()]||["#efede8","#8a8780"];return `--tint:${k[0]};--dot:${k[1]}`;}
 
 // ── 재고 카드 버튼 이벤트 위임 ──
 // 상품명에 줄바꿈이나 따옴표가 들어가도 안전하도록 onclick 대신 위임을 쓴다.
@@ -662,8 +705,8 @@ function renderStock(){
   }).join("");
   document.getElementById("cl-filters").innerHTML=["전체",...colls].map(c=>{
     const on=ac===c?"on":"";
-    return`<button class="fbtn ${on}" onclick="window.setFC('${c}')">${c}</button>`;
-  }).join("");
+    return`<button class="fbtn ${on}" onclick="window.setFC('${c}')" style="${c==="전체"?"":collVars(c)}">${c==="전체"?"":'<span class="coll-dot"></span>'}${c}</button>`;
+  }).join("")+`<button class="fbtn low-chip ${showLowOnly?"on":""}" onclick="window.toggleLowOnly()">재고 부족 ${low.length}</button>`;
 
   // 옵션 이름 안전하게 저장 (특수문자 대응)
   window.__opts={};
@@ -694,53 +737,34 @@ function renderStock(){
     const isCol=collapsedGroups.has(gk);
     const gTotal=gitems.reduce((a,i)=>a+totalQty(i),0);
     const sGk=gk.replace(/'/g,"\\'");
-    const cards=gitems.map(item=>{
-      const low=isLow(item),qty=totalQty(item),hasOpts=item.options?.length>0;
-      const nm=item.name.replace(/'/g,"\\'");
-      const optRows=hasOpts?item.options.map(o=>{
-        const oLow=(o.quantity||0)<10;
-        return`<div class="opt-row">
-          <span class="opt-name">${o.name}${o.size?`<span style="display:block;font-size:9px;color:var(--ink);opacity:.8">${o.size}</span>`:""}
-          </span>
-          ${oLow?`<span style="font-size:9px;flex-shrink:0">🔴</span>`:""}
-          <span class="opt-qty" style="color:${oLow?"var(--low)":(isDark?"var(--ink)":"var(--ink)")};flex-shrink:0">${o.quantity||0}<span class="unit"> ${item.unit||"개"}</span></span>
-        </div>`;
-      }).join(""):"";
-      return`<div class="item-card${low?" low-stock":""}">
-        <div class="item-img" onclick="window.openPhoto('${item.id}')" style="cursor:pointer">
-          ${item.imageUrl?`<img src="${item.imageUrl}" alt="${item.name}">`:`<span style="opacity:.15">📷</span>`}
-          ${low?`<div class="low-mask"></div>`:""}
-        </div>
-        <div class="item-body">
-          <div class="item-name" style="display:flex;align-items:center;gap:4px">
-            ${item.name}
-            <button class="item-name-btn" data-iid="${item.id}" style="padding:1px 5px;border-radius:0;font-size:9px;background:var(--bg);border:1px solid var(--line);color:var(--sub);cursor:pointer;flex-shrink:0">✏️</button>
-          </div>
-          ${item.material?`<div class="item-sub">${item.material}</div>`:""}
-          ${item.size?`<div class="item-sub" style="color:var(--ink);opacity:.85">${item.size}</div>`:""}
-          <div class="item-qty" style="color:${low?"var(--low)":(isDark?"var(--ink)":"var(--ink)")}">${qty}<span class="unit"> ${item.unit||"개"}</span></div>
-        </div>
-        ${hasOpts
-          ?`<div class="opts-panel">${item.options.map((o,oi)=>{
-              const oLow=(o.quantity||0)<10;
-              return`<div class="opt-row">
-                <span class="opt-name">${o.name}${o.size?`<br><span style="font-size:9px;color:var(--ink);opacity:.8">${o.size}</span>`:""}</span>
-                ${oLow?`<span style="font-size:9px;flex-shrink:0">🔴</span>`:""}
-                <span class="opt-qty" style="color:${oLow?"var(--low)":(isDark?"var(--ink)":"var(--ink)")};flex-shrink:0">${o.quantity||0}<span class="unit"> ${item.unit||"개"}</span></span>
-                <button class="opt-qty-btn" data-iid="${item.id}" data-oi="${oi}" data-qty="${o.quantity||0}"
-                  style="padding:2px 7px;border-radius:0;font-size:9px;font-weight:700;background:var(--bg);border:1px solid var(--line);color:var(--sub);flex-shrink:0;cursor:pointer">수정</button>
-              </div>`;}).join("")}</div>`
-          :`<div class="card-actions"><button class="item-qty-btn" data-iid="${item.id}" data-qty="${qty}" style="width:100%;padding:6px 0;border-radius:0;font-size:10px;font-weight:700;background:var(--bg);border:1px solid var(--line);color:var(--muted);cursor:pointer">수량 수정</button></div>`}
-      </div>`;
+    // 시연판 재고 표: 옵션마다 한 줄, 사진·컬렉션·상품명은 첫 줄에만
+    const rows=gitems.map(item=>{
+      const hasOpts=item.options?.length>0, qty=totalQty(item), low=isLow(item);
+      const unit=item.unit||"개";
+      const lines=hasOpts?item.options.map((o,oi)=>({name:o.name,size:o.size,q:o.quantity||0,oi})):[{name:"",q:qty,oi:-1}];
+      return lines.map((ln,li)=>{
+        const lowLn=ln.q<10;
+        const first=li===0;
+        return `<tr class="${first?"first":""}${low&&first?" low-item":""}">
+          <td class="c-thumb">${first?`<div class="item-img tinted s-thumb" style="${collVars(item.collection)}" onclick="window.openPhoto('${item.id}')">${item.imageUrl?`<img src="${item.imageUrl}" alt="">`:`<span class="ph-name">${escH(item.name)}</span>`}</div>`:""}</td>
+          <td class="c-coll">${first?`<span class="coll-dot" style="${collVars(item.collection)}"></span> ${escH(item.collection||"")}`:""}</td>
+          <td class="c-name">${first?`<b>${escH(item.name)}</b> <button class="item-name-btn" data-iid="${item.id}" title="상품명 수정">✏️</button>`:""}</td>
+          <td class="c-opt">${ln.name?escH(ln.name):"-"}${ln.size?`<div class="c-sub">${escH(ln.size)}</div>`:""}</td>
+          <td class="c-spec">${first?escH([item.size,item.material].filter(Boolean).join(" · ")):""}</td>
+          <td class="c-qty"><span class="${lowLn?"lowtxt":""}">${ln.q.toLocaleString()}</span> <span class="unit">${escH(unit)}</span>${lowLn?' <span class="low-pill">LOW</span>':""}</td>
+          <td class="c-act">${ln.oi>=0?`<button class="opt-qty-btn" data-iid="${item.id}" data-oi="${ln.oi}" data-qty="${ln.q}">수량 수정</button>`:`<button class="item-qty-btn" data-iid="${item.id}" data-qty="${ln.q}">수량 수정</button>`}</td>
+        </tr>`;
+      }).join("");
     }).join("");
+    const cards=`<div class="s-table-wrap"><table class="s-table"><thead><tr><th></th><th>컬렉션</th><th>상품명</th><th>옵션</th><th>사이즈 · 소재</th><th>수량</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
     return`<div class="collection-group">
-      <div class="coll-header${isCol?" collapsed":""}" onclick="window.toggleGroup('${sGk}')">
-        <span>${isCol?"📁":"🗂️"}</span>
-        <span style="color:${isDark?"var(--sub)":"var(--ink)"}">${gk}</span>
+      <div class="coll-header${isCol?" collapsed":""}" onclick="window.toggleGroup('${sGk}')" style="${collVars(gitems[0]&&gitems[0].collection)}">
+        <span class="coll-dot"></span>
+        <span style="color:var(--ink);font-weight:900">${gk}</span>
         <span style="margin-left:auto;font-size:10px;color:var(--ink)">${gitems.length}종 · ${gTotal.toLocaleString()}개</span>
         <span style="font-size:11px;color:${isDark?"var(--muted)":"var(--muted)"}">${isCol?"▶":"▼"}</span>
       </div>
-      ${!isCol?`<div class="items-wrap"><div class="item-grid">${cards}</div></div>`:""}
+      ${!isCol?`<div class="items-wrap">${cards}</div>`:""}
     </div>`;
   }}).join("");
 }
