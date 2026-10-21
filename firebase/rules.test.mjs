@@ -274,7 +274,20 @@ test("포장재(packaging): 외부 차단, 관리자 읽기, 최고관리자만 
   await assertFails(setDoc(doc(manager(), "packaging", "p1"), { id: "p1", name: "에어캡 1m", quantity: 1, options: null }));
   await assertSucceeds(setDoc(doc(owner(), "packaging", "p1"), { id: "p1", name: "에어캡 1m", quantity: 1, options: null }));
 });
-test("최고관리자: 명단 수정은 앱에서 불가 (콘솔 전용)", async () => {
+test("최고관리자: 관리자 명단은 보기만, 수정은 앱에서 불가 (콘솔 전용)", async () => {
   await assertSucceeds(getDoc(doc(owner(), "admins", "owner@eidos.kr")));
+  await assertSucceeds(getDocs(collection(owner(), "admins")));
   await assertFails(setDoc(doc(owner(), "admins", "new@x.com"), { role: "manager" }));
+});
+test("최고관리자: 매장 계정 명단 보기·추가·삭제 (계정 관리 화면)", async () => {
+  await assertSucceeds(getDocs(collection(owner(), "stores")));
+  await assertSucceeds(setDoc(doc(owner(), "stores", "new.stock@eidosstudio.co.kr"), { name: "새 공용" }));
+  await assertFails(setDoc(doc(owner(), "stores", "Upper@eidosstudio.co.kr"), { name: "대문자" }));
+  await assertFails(setDoc(doc(owner(), "stores", "new.stock@eidosstudio.co.kr"), { name: "덮어쓰기" }));
+  await assertSucceeds(deleteDoc(doc(owner(), "stores", "new.stock@eidosstudio.co.kr")));
+});
+test("담당자: 매장 계정 명단 보기·추가·삭제 불가", async () => {
+  await assertFails(getDocs(collection(manager(), "stores")));
+  await assertFails(setDoc(doc(manager(), "stores", "x.stock@eidosstudio.co.kr"), { name: "x" }));
+  await assertFails(deleteDoc(doc(manager(), "stores", "gentlemonster.stock@eidosstudio.co.kr")));
 });
