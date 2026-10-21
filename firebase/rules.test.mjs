@@ -286,6 +286,15 @@ test("최고관리자: 매장 계정 명단 보기·추가·삭제 (계정 관�
   await assertFails(setDoc(doc(owner(), "stores", "new.stock@eidosstudio.co.kr"), { name: "덮어쓰기" }));
   await assertSucceeds(deleteDoc(doc(owner(), "stores", "new.stock@eidosstudio.co.kr")));
 });
+test("발주자 이름: 매장은 저장만, 관리자만 읽기", async () => {
+  await assertSucceeds(setDoc(doc(store(), "orderContacts", "o-new"), { name: "홍길동" }));
+  await assertFails(setDoc(doc(store(), "orderContacts", "o-new"), { name: "덮어쓰기" }));
+  await assertFails(getDoc(doc(store(), "orderContacts", "o-new")));
+  await assertFails(setDoc(doc(store(), "orderContacts", "o-x"), { name: "홍길동", extra: 1 }));
+  await assertFails(setDoc(doc(anon(), "orderContacts", "o-y"), { name: "외부인" }));
+  await assertSucceeds(getDoc(doc(manager(), "orderContacts", "o-new")));
+  await assertSucceeds(getDoc(doc(owner(), "orderContacts", "o-new")));
+});
 test("담당자: 매장 계정 명단 보기·추가·삭제 불가", async () => {
   await assertFails(getDocs(collection(manager(), "stores")));
   await assertFails(setDoc(doc(manager(), "stores", "x.stock@eidosstudio.co.kr"), { name: "x" }));

@@ -339,6 +339,8 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
 .o-date>div{text-align:left!important}
 .o-status{grid-area:status}
 .o-store>div:first-child{margin-bottom:6px}
+.o-orderer{font-size:11px;color:var(--muted);margin:-2px 0 6px}
+.o-orderer b{color:var(--ink)}
 .o-row.dim{opacity:.6}
 @media(min-width:900px){
   .o-head{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) 90px 130px;gap:14px;padding:9px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--sub);border-bottom:1px solid var(--ink);background:var(--surface)}
@@ -564,7 +566,14 @@ function startData(){
     orders=snap.docs.map(d=>({...d.data(),id:d.id}));
     renderOrders();
   },err=>{console.error(err);showToast("출고요청을 불러오지 못했어요: "+err.message,"var(--low)");}));
+  // 발주자 전체 이름 (관리자만 읽을 수 있음)
+  dataUnsubs.push(onSnapshot(collection(db,"orderContacts"),snap=>{
+    ordererNames={}; snap.docs.forEach(d=>{ ordererNames[d.id]=(d.data()||{}).name||""; });
+    renderOrders();
+  },err=>{console.error("발주자 이름을 불러오지 못했어요",err);}));
 }
+let ordererNames={};
+function ordererOf(o){ return ordererNames[o.id]||o.ordererMasked||""; }
 
 // ── 관리자 로그인 ──
 // 관리자 명단: Firestore admins 컬렉션, 문서 ID = 관리자 이메일(소문자).
@@ -1715,7 +1724,7 @@ window.printOrder=(orderId)=>{
   const win=window.open("","_blank","width=820,height=680");
   win.document.write("<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'><title>출고 지시서 - "+order.storeName+"</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;padding:40px;color:#111;font-size:13px}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:14px;border-bottom:2px solid #111}.title{font-size:22px;font-weight:800}.meta{text-align:right;font-size:11px;color:#555;line-height:1.9}.info-row{display:flex;gap:36px;margin-bottom:22px}.info-item{display:flex;flex-direction:column;gap:3px}.info-label{font-size:10px;color:#666;font-weight:700;text-transform:uppercase}.info-value{font-size:14px;font-weight:700}table{width:100%;border-collapse:collapse;margin-bottom:24px}th{background:#111;color:#fff;padding:9px 12px;font-size:11px;font-weight:700;text-align:left}td{padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px}tr:nth-child(even) td{background:#f9fafb}.sign-area{display:flex;gap:32px;margin-top:30px}.sign-box{flex:1;border-top:1px solid #111;padding-top:8px;font-size:11px;color:#666;text-align:center;padding-bottom:40px}.footer{margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:11px;color:#888}@media print{button{display:none!important}body{padding:20px}}</style></head><body>");
   win.document.write("<div class='header'><div><div class='title'>출고 지시서</div><div style='font-size:11px;color:#666;margin-top:3px'>DELIVERY ORDER</div></div><div class='meta'><div>발행일: "+dateStr+"</div><div>상태: "+order.status+"</div>"+(order.handler?"<div style='font-weight:700;margin-top:2px'>"+order.handler+"</div>":"")+"</div></div>");
-  win.document.write("<div class='info-row'><div class='info-item'><div class='info-label'>매장명</div><div class='info-value'>"+order.storeName+"</div></div><div class='info-item'><div class='info-label'>요청일</div><div class='info-value'>"+(order.date||"-")+"</div></div>"+(order.reason?"<div class='info-item'><div class='info-label'>요청 사유</div><div class='info-value' style='font-size:12px;font-weight:600'>"+order.reason+"</div></div>":"")+"</div>");
+  win.document.write("<div class='info-row'><div class='info-item'><div class='info-label'>매장명</div><div class='info-value'>"+order.storeName+"</div></div>"+(ordererOf(order)?"<div class='info-item'><div class='info-label'>발주자</div><div class='info-value'>"+escH(ordererOf(order))+"</div></div>":"")+"<div class='info-item'><div class='info-label'>요청일</div><div class='info-value'>"+(order.date||"-")+"</div></div>"+(order.reason?"<div class='info-item'><div class='info-label'>요청 사유</div><div class='info-value' style='font-size:12px;font-weight:600'>"+order.reason+"</div></div>":"")+"</div>");
   win.document.write("<table><thead><tr><th style='width:15%'>컬렉션</th><th style='width:22%'>재고명</th><th style='width:13%'>옵션</th><th style='width:20%'>사이즈</th><th style='width:15%'>소재</th><th style='width:9%;text-align:center'>수량</th></tr></thead><tbody>");
   rows.forEach(r=>{
     win.document.write("<tr><td>"+r.collection+"</td><td style='font-weight:600'>"+r.name+"</td><td style='color:#555'>"+(r.opt==="-"||r.opt==="null"?"-":r.opt)+"</td><td style='font-size:11px;color:#555'>"+r.size+"</td><td style='font-size:11px;color:#555'>"+r.material+"</td><td style='text-align:center;font-weight:800;font-size:13px'>"+r.qty+r.unit+"</td></tr>");
@@ -1799,6 +1808,7 @@ function matchesOrderSearch(o,q){
     o.storeName||"",
     o.reason||"",
     o.handler||"",
+    ordererOf(o),
     ...(o.items||[]).map(it=>`${it.itemName||""} ${it.optName||""} ${it.collection||""}`)
   ].join(" ").toLowerCase();
   return q.toLowerCase().split(/\s+/).filter(Boolean).every(w=>hay.includes(w));
@@ -2006,7 +2016,8 @@ function renderOrderCard(order){
 
   // 표 한 줄 (시연판): [매장·사유] [품목] [요청일] [상태]
   let html="<div class=\"order-row o-row"+(["반려","취소"].includes(s)?" dim":"")+"\">"
-    +"<div class=\"o-store\">"+storeRow;
+    +"<div class=\"o-store\">"+storeRow
+    +(ordererOf(order)?"<div class=\"o-orderer\">발주자 <b>"+escH(ordererOf(order))+"</b></div>":"");
 
   // 사유
   if(order.reason) html+="<div style=\"font-size:11px;padding:6px 10px;border-radius:0;background:var(--bg);border:1px solid var(--bg);color:var(--sub);margin-bottom:6px\">📝 "+escH(order.reason)+"</div>";

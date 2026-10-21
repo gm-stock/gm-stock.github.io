@@ -96,6 +96,18 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // ── 발주자 전체 이름: 매장에서 발주할 때 함께 저장, 관리자만 읽기 ──
+    // (출고요청 문서에는 일부를 *로 가린 이름 ordererMasked 만 들어간다)
+    match /orderContacts/{orderId} {
+      allow create: if isStaff()
+        && request.resource.data.keys().hasOnly(["name", "createdAt"])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40;
+      allow read: if isAdmin();
+      allow update, delete: if isOwner();
+    }
+
     // ── 매장 계정 명단: 본인 문서만 읽기 ──
     // 최고관리자는 관리자 화면 '계정 관리'에서 명단 보기·추가·삭제(아이디 교체)를 할 수 있다.
     match /stores/{email} {
