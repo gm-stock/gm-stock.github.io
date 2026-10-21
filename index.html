@@ -187,14 +187,16 @@ body.light{--bg:#f7f6f3;--surface:#ffffff;--ink:#111111;--sub:#4a4a4a;--muted:#8
 body.dark{--bg:#121211;--surface:#1b1b1a;--ink:#f1efea;--sub:#c3c0b8;--muted:#8f8c85;--line:#34332f;--line2:#262523;--low:#ff5c70;--accent:#f0782f;--accent-ink:#111111;--hover:#242422;--ok:#9fd39a;--ok-bg:#1f3320}
 body.light,body.dark{background:var(--bg);color:var(--ink);font-family:'Roboto','Nanum Gothic','Pretendard Variable','Pretendard',sans-serif;-webkit-font-smoothing:antialiased}
 body.light ::-webkit-scrollbar-thumb,body.dark ::-webkit-scrollbar-thumb{background:var(--line);border-radius:0}
-/* 헤더·하단 메뉴 */
-body.light #app-header,body.dark #app-header{background:var(--ink);color:var(--bg);border-bottom:0;backdrop-filter:none}
-body.light #app-header .stat-lbl,body.dark #app-header .stat-lbl{color:var(--bg);opacity:.7}
-.logo-box{border-radius:0;background:var(--bg)!important;color:var(--ink);font-size:11px;font-weight:900;letter-spacing:.06em}
-body.light .theme-toggle,body.dark .theme-toggle{border-radius:0;background:transparent;border:1px solid currentColor;color:var(--bg)}
-.theme-knob{border-radius:0;background:var(--bg);box-shadow:none}
-.logout-btn,body.light .logout-btn{border-radius:0;border:1px solid var(--bg)!important;background:transparent!important;color:var(--bg)!important}
-#app-header [onclick="toggleLangMenu()"]{border-radius:0!important;background:transparent!important;border:1px solid var(--bg)!important;color:var(--bg)!important}
+/* 헤더·하단 메뉴 (헤더는 밝기와 상관없이 항상 검정) */
+#app-header{--hbg:#111111;--hfg:#f7f6f3}
+body.dark #app-header{--hbg:#0b0b0b;border-bottom:1px solid var(--line)!important}
+body.light #app-header,body.dark #app-header{background:var(--hbg);color:var(--hfg);border-bottom:0;backdrop-filter:none}
+body.light #app-header .stat-lbl,body.dark #app-header .stat-lbl{color:var(--hfg);opacity:.7}
+.logo-box{border-radius:0;background:var(--hfg)!important;color:var(--hbg);font-size:11px;font-weight:900;letter-spacing:.06em}
+body.light .theme-toggle,body.dark .theme-toggle{border-radius:0;background:transparent;border:1px solid currentColor;color:var(--hfg)}
+.theme-knob{border-radius:0;background:var(--hfg);box-shadow:none}
+.logout-btn,body.light .logout-btn{border-radius:0;border:1px solid var(--hfg)!important;background:transparent!important;color:var(--hfg)!important}
+#app-header [onclick="toggleLangMenu()"]{border-radius:0!important;background:transparent!important;border:1px solid var(--hfg)!important;color:var(--hfg)!important}
 #lang-menu{border-radius:0!important;background:var(--surface)!important;border:1px solid var(--ink)!important;box-shadow:0 8px 24px rgba(0,0,0,.25)!important}
 #lang-menu .lang-opt{color:var(--ink)!important}
 #lang-menu .lang-opt:hover{background:var(--hover)}
@@ -1683,7 +1685,7 @@ function renderOrders(){
 
   el.innerHTML=banner+Object.entries(grouped).map(([week,wOrders])=>`
     <div class="week-group">
-      <div class="week-header" onclick="window.toggleWeek('${week.replace(/[/]/g,"_")}')" style="cursor:pointer;border-radius:${isWeekCollapsed(week.replace(/[/]/g,"_"))?"10px":"10px 10px 0 0"}">
+      <div class="week-header" onclick="window.toggleWeek('${week.replace(/[/]/g,"_")}')" style="cursor:pointer;border-radius:${isWeekCollapsed(week.replace(/[/]/g,"_"))?"0":"0"}">
         <span>📅</span>
         <span style="color:var(--ink)">${fmtWeek(week)}</span>
         <span style="margin-left:auto;font-size:10px;color:var(--ink)">${nu(wOrders.length,"unit_case")}</span>
