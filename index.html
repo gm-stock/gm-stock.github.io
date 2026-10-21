@@ -183,8 +183,8 @@ body.light .logout-btn{border-color:rgba(0,0,0,0.12);background:#fff}
 
 /* ══ 새 디자인 바탕 (2026-10 리디자인 1단계) ══
    색·글꼴·모서리만 바꾼다. 기능과 화면 구성은 그대로. */
-body.light{--bg:#f7f6f3;--surface:#ffffff;--ink:#111111;--sub:#4a4a4a;--muted:#8a8780;--line:#dcdad4;--line2:#ebe9e4;--low:#b3001b;--accent:#c2410c;--accent-ink:#ffffff;--hover:#efede8}
-body.dark{--bg:#121211;--surface:#1b1b1a;--ink:#f1efea;--sub:#c3c0b8;--muted:#8f8c85;--line:#34332f;--line2:#262523;--low:#ff5c70;--accent:#f0782f;--accent-ink:#111111;--hover:#242422}
+body.light{--bg:#f7f6f3;--surface:#ffffff;--ink:#111111;--sub:#4a4a4a;--muted:#8a8780;--line:#dcdad4;--line2:#ebe9e4;--low:#b3001b;--accent:#c2410c;--accent-ink:#ffffff;--hover:#efede8;--ok:#2f5a2b;--ok-bg:#e9f2e5}
+body.dark{--bg:#121211;--surface:#1b1b1a;--ink:#f1efea;--sub:#c3c0b8;--muted:#8f8c85;--line:#34332f;--line2:#262523;--low:#ff5c70;--accent:#f0782f;--accent-ink:#111111;--hover:#242422;--ok:#9fd39a;--ok-bg:#1f3320}
 body.light,body.dark{background:var(--bg);color:var(--ink);font-family:'Roboto','Nanum Gothic','Pretendard Variable','Pretendard',sans-serif;-webkit-font-smoothing:antialiased}
 body.light ::-webkit-scrollbar-thumb,body.dark ::-webkit-scrollbar-thumb{background:var(--line);border-radius:0}
 /* 헤더·하단 메뉴 */
@@ -276,10 +276,19 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
 .stock-meter{height:3px;background:var(--line2);margin-top:4px}
 .stock-meter i{display:block;height:100%;background:var(--ink)}
 .stock-meter.low i{background:var(--low)}
+/* ══ 리디자인 4단계: PC(넓은 화면)에서는 장바구니를 오른쪽에 항상 표시 ══ */
+@media(min-width:1100px){
+  #app-body{flex-direction:row}
+  #app-body>.tab-pane.active{flex:1;min-width:0}
+  #app-body #tab-cart{display:block;flex:0 0 360px;order:2;border-left:1px solid var(--line);background:var(--surface)}
+  #app-body:has(#tab-cart.active) #tab-stock{display:block;flex:1;min-width:0}
+  #nav-cart{display:none}
+  #app-body:has(#tab-cart.active)~#bottom-nav #nav-stock{color:var(--ink);font-weight:900}
+}
 </style>
 </head>
 <body class="light">
-<div id="loading"><div class="spinner"></div><div style="font-size:14px;color:#475569">연결 중...</div></div>
+<div id="loading"><div class="spinner"></div><div style="font-size:14px;color:var(--muted)">연결 중...</div></div>
 <div id="toast"></div>
 
 <!-- 매장 로그인 -->
@@ -287,7 +296,7 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
   <form class="login-card" id="login-form" autocomplete="on">
     <div style="font-size:44px;margin-bottom:14px">🔐</div>
     <div style="font-size:18px;font-weight:800;margin-bottom:6px" data-i18n="login_title">매장 로그인</div>
-    <div style="font-size:13px;color:#64748b;margin-bottom:22px" data-i18n="login_sub">매장 계정으로 로그인해 주세요</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:22px" data-i18n="login_sub">매장 계정으로 로그인해 주세요</div>
     <input id="login-id" type="text" placeholder="아이디" data-i18n-ph="login_id" autocomplete="username" autocapitalize="none" spellcheck="false" required>
     <input id="login-pw" type="password" placeholder="비밀번호" data-i18n-ph="login_pw" autocomplete="current-password" required>
     <button class="login-btn" id="login-submit" type="submit" data-i18n="login_btn">로그인</button>
@@ -305,10 +314,10 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
     <div class="field-wrap">
       <div class="field-label" data-i18n="lbl_qty">수량</div>
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-        <button onclick="adjQty(-1)" style="width:36px;height:36px;border-radius:99px;font-size:20px;font-weight:300;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;display:flex;align-items:center;justify-content:center">−</button>
+        <button onclick="adjQty(-1)" style="width:36px;height:36px;border-radius:0;font-size:20px;font-weight:300;background:var(--bg);border:1px solid var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center">−</button>
         <input type="number" id="cart-qty" min="1" value="1" class="field-input" style="width:72px;text-align:center;padding:8px;font-size:18px;font-weight:800">
-        <button onclick="adjQty(1)" style="width:36px;height:36px;border-radius:99px;font-size:20px;font-weight:300;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;display:flex;align-items:center;justify-content:center">＋</button>
-        <span id="cart-stock-label" style="font-size:11px;color:#475569"></span>
+        <button onclick="adjQty(1)" style="width:36px;height:36px;border-radius:0;font-size:20px;font-weight:300;background:var(--bg);border:1px solid var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center">＋</button>
+        <span id="cart-stock-label" style="font-size:11px;color:var(--muted)"></span>
       </div>
     </div>
     <button class="btn-primary" onclick="confirmAddToCart()">🛒 <span data-i18n="btn_add">장바구니에 담기</span></button>
@@ -321,7 +330,7 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
   <div class="modal-sheet" style="max-height:90dvh;overflow-y:auto">
     <div class="modal-handle"></div>
     <div class="modal-title">📦 <span data-i18n="order_confirm">발주 요청서 확인</span></div>
-    <div id="checkout-list" style="border-radius:12px;padding:12px 14px;margin-bottom:14px" class="stat-tile"></div>
+    <div id="checkout-list" style="border-radius:0;padding:12px 14px;margin-bottom:14px" class="stat-tile"></div>
     <div class="field-wrap">
       <div class="field-label"><span data-i18n="lbl_store">매장명</span> *</div>
       <input class="field-input" id="store-name" data-i18n-ph="lbl_store" placeholder="매장명" autocomplete="off">
@@ -329,28 +338,28 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
     <div class="field-wrap">
       <div class="field-label"><span data-i18n="lbl_reqtype">요청 유형</span> *</div>
       <div style="display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-        <label id="type-label-파손" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:all .15s">
-          <input type="radio" name="order-type" value="파손" style="accent-color:#ef4444" onchange="onOrderTypeChange()"> 🔴 <span data-i18n="type_damaged">파손</span>
+        <label id="type-label-파손" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:0;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid var(--line);background:var(--bg);transition:all .15s">
+          <input type="radio" name="order-type" value="파손" style="accent-color:var(--low)" onchange="onOrderTypeChange()"> 🔴 <span data-i18n="type_damaged">파손</span>
         </label>
-        <label id="type-label-부족" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:all .15s">
-          <input type="radio" name="order-type" value="부족" style="accent-color:#fbbf24" onchange="onOrderTypeChange()"> 🟡 <span data-i18n="type_shortage">부족</span>
+        <label id="type-label-부족" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:0;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid var(--line);background:var(--bg);transition:all .15s">
+          <input type="radio" name="order-type" value="부족" style="accent-color:var(--accent)" onchange="onOrderTypeChange()"> 🟡 <span data-i18n="type_shortage">부족</span>
         </label>
-        <label id="type-label-오픈" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);transition:all .15s">
-          <input type="radio" name="order-type" value="오픈" style="accent-color:#34d399" onchange="onOrderTypeChange()"> 🟢 <span data-i18n="type_open">오픈</span>
+        <label id="type-label-오픈" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:0;cursor:pointer;font-size:13px;font-weight:600;border:1.5px solid var(--line);background:var(--bg);transition:all .15s">
+          <input type="radio" name="order-type" value="오픈" style="accent-color:var(--ok)" onchange="onOrderTypeChange()"> 🟢 <span data-i18n="type_open">오픈</span>
         </label>
       </div>
-      <div id="type-notice" style="font-size:11px;color:#475569;margin-top:4px"></div>
+      <div id="type-notice" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
     </div>
     <div class="field-wrap">
-      <div class="field-label"><span data-i18n="lbl_details">상세 사유</span> <span id="reason-required-mark">*</span> <span style="font-size:10px;color:#475569">(<span data-i18n="hint_specific">구체적으로</span>)</span></div>
+      <div class="field-label"><span data-i18n="lbl_details">상세 사유</span> <span id="reason-required-mark">*</span> <span style="font-size:10px;color:var(--muted)">(<span data-i18n="hint_specific">구체적으로</span>)</span></div>
       <textarea class="field-input" id="order-reason" rows="2" data-i18n-ph="ph_reason" placeholder="예: 전시용 SET1 PLATE 낙하로 파손" style="resize:none;line-height:1.5"></textarea>
     </div>
     <div class="field-wrap" id="photo-wrap">
-      <div class="field-label"><span data-i18n="lbl_photo">파손 사진</span> <span id="photo-required-label" style="font-size:10px;color:#475569">(선택)</span></div>
+      <div class="field-label"><span data-i18n="lbl_photo">파손 사진</span> <span id="photo-required-label" style="font-size:10px;color:var(--muted)">(선택)</span></div>
       <div id="photo-preview-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
-      <label style="display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:10px;cursor:pointer;font-size:13px;border:1.5px dashed rgba(255,255,255,0.15)">
-        <span>📷 <span data-i18n="btn_addphoto">사진 추가</span> <span style="font-size:10px;color:#475569">(<span data-i18n="max3">최대 3장</span>)</span></span>
-        <span id="photo-count-label" style="font-size:10px;color:#6366f1;margin-left:auto"></span>
+      <label style="display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:0;cursor:pointer;font-size:13px;border:1.5px dashed var(--line)">
+        <span>📷 <span data-i18n="btn_addphoto">사진 추가</span> <span style="font-size:10px;color:var(--muted)">(<span data-i18n="max3">최대 3장</span>)</span></span>
+        <span id="photo-count-label" style="font-size:10px;color:var(--ink);margin-left:auto"></span>
         <input type="file" id="order-photos" accept="image/*" multiple style="display:none" onchange="previewPhotos()">
       </label>
     </div>
@@ -371,17 +380,17 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
   <div style="display:flex;align-items:center;gap:8px">
     <div style="position:relative">
       <button onclick="toggleLangMenu()" title="Language"
-        style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:99px;font-size:11px;font-weight:700;font-family:inherit;
-               background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:inherit;cursor:pointer;white-space:nowrap">
+        style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:0;font-size:11px;font-weight:700;font-family:inherit;
+               background:var(--bg);border:1px solid var(--line);color:inherit;cursor:pointer;white-space:nowrap">
         🌐 <span id="lang-label">한국어</span>
       </button>
       <div id="lang-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:132px;z-index:200;
-           background:#1e2235;border:1px solid rgba(255,255,255,0.14);border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.45)">
-        <div onclick="setLang('ko')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">한국어</div>
-        <div onclick="setLang('ja')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">日本語</div>
-        <div onclick="setLang('en')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">English</div>
-        <div onclick="setLang('zh-CN')" class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">简体中文</div>
-        <div onclick="setLang('zh-TW')" class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:#e2e8f0">繁體中文</div>
+           background:var(--surface);border:1px solid var(--line);border-radius:0;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.45)">
+        <div onclick="setLang('ko')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:var(--ink)">한국어</div>
+        <div onclick="setLang('ja')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:var(--ink)">日本語</div>
+        <div onclick="setLang('en')"    class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:var(--ink)">English</div>
+        <div onclick="setLang('zh-CN')" class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:var(--ink)">简体中文</div>
+        <div onclick="setLang('zh-TW')" class="lang-opt" style="padding:10px 14px;font-size:12px;cursor:pointer;color:var(--ink)">繁體中文</div>
       </div>
     </div>
     <button class="logout-btn" id="logout-btn" type="button" data-i18n="login_logout">로그아웃</button>
@@ -405,11 +414,11 @@ body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16
   <div id="tab-orders" class="tab-pane"><div class="page-scroll">
     <div style="position:relative;margin-bottom:12px">
       <input id="order-search" type="search" data-i18n-ph="search_ph" placeholder="🔍 매장명 · 상품명 검색" autocomplete="off"
-        style="width:100%;padding:11px 38px 11px 14px;border-radius:12px;font-size:14px;font-family:inherit;outline:none;
-               background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:inherit;box-sizing:border-box">
+        style="width:100%;padding:11px 38px 11px 14px;border-radius:0;font-size:14px;font-family:inherit;outline:none;
+               background:var(--bg);border:1.5px solid var(--line);color:inherit;box-sizing:border-box">
       <button id="order-search-clear" type="button"
         style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:26px;height:26px;
-               border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#94a3b8;cursor:pointer;font-size:13px;line-height:1">✕</button>
+               border-radius:50%;background:var(--line);border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1">✕</button>
     </div>
     <div id="orders-list"></div>
     <div style="height:80px"></div>
@@ -523,7 +532,7 @@ function syncReasonMark(){
   const mark=document.getElementById("reason-required-mark");
   if(!mark) return;
   const sel=document.querySelector('input[name="order-type"]:checked')?.value;
-  if(sel==="오픈"){ mark.textContent="("+t("req_optional")+")"; mark.style.color="#475569"; mark.style.fontSize="10px"; }
+  if(sel==="오픈"){ mark.textContent="("+t("req_optional")+")"; mark.style.color="var(--muted)"; mark.style.fontSize="10px"; }
   else { mark.textContent="*"; mark.style.color=""; mark.style.fontSize=""; }
 }
 
@@ -533,7 +542,7 @@ function syncPhotoLabel(){
   const el=document.getElementById("photo-required-label");
   if(!el) return;
   const sel=document.querySelector('input[name="order-type"]:checked')?.value;
-  if(sel==="파손") el.innerHTML="<span style='color:#ef4444'>* "+t("req_required")+"</span>";
+  if(sel==="파손") el.innerHTML="<span style='color:var(--low)'>* "+t("req_required")+"</span>";
   else if(sel==="오픈") el.textContent="("+t("req_notneeded")+")";
   else el.textContent="("+t("req_optional")+")";
 }
@@ -573,17 +582,17 @@ let items=[],orders=[],cart=[];
 
 // 출고요청 상태 표시 (관리자 index.html과 동일한 상태값)
 const VIEW_STATUS={
-  "검토중":  {icon:"🔍", label:"검토중",  bg:"rgba(139,92,246,0.15)", color:"#a78bfa", border:"rgba(139,92,246,0.3)"},
-  "승인":    {icon:"✅", label:"승인됨",  bg:"rgba(59,130,246,0.15)", color:"#60a5fa", border:"rgba(59,130,246,0.3)"},
-  "준비중":  {icon:"🔄", label:"준비중",  bg:"rgba(251,191,36,0.15)", color:"#fbbf24", border:"rgba(251,191,36,0.3)"},
-  "출고대기":{icon:"📦", label:"출고대기",bg:"rgba(249,115,22,0.15)", color:"#fb923c", border:"rgba(249,115,22,0.3)"},
-  "출고완료":{icon:"✅", label:"출고완료",bg:"rgba(52,211,153,0.15)", color:"#34d399", border:"rgba(52,211,153,0.3)"},
-  "반려":    {icon:"❌", label:"반려",    bg:"rgba(239,68,68,0.15)",  color:"#ef4444", border:"rgba(239,68,68,0.3)"},
-  "취소":    {icon:"🚫", label:"취소됨",  bg:"rgba(100,116,139,0.15)",color:"#94a3b8", border:"rgba(100,116,139,0.3)"},
+  "검토중":  {icon:"", label:"검토중",  bg:"transparent",     color:"var(--accent)", border:"var(--accent)"},
+  "승인":    {icon:"", label:"승인됨",  bg:"var(--ink)",      color:"var(--bg)",     border:"var(--ink)"},
+  "준비중":  {icon:"", label:"준비중",  bg:"transparent",     color:"var(--sub)",    border:"var(--sub)"},
+  "출고대기":{icon:"", label:"출고대기",bg:"transparent",     color:"var(--ink)",    border:"var(--ink)"},
+  "출고완료":{icon:"", label:"출고완료",bg:"var(--ok-bg)",    color:"var(--ok)",     border:"var(--ok-bg)"},
+  "반려":    {icon:"", label:"반려",    bg:"transparent",     color:"var(--low)",    border:"var(--low)"},
+  "취소":    {icon:"", label:"취소됨",  bg:"transparent",     color:"var(--muted)",  border:"var(--line)"},
 };
 function statusBadgeHTML(status){
   const s=VIEW_STATUS[status]||VIEW_STATUS["검토중"];
-  return `<span class="status-badge" style="background:${s.bg};color:${s.color};border:1px solid ${s.border}">${s.icon} ${tStatus(status)}</span>`;
+  return `<span class="status-badge" style="background:${s.bg};color:${s.color};border:1px solid ${s.border}">${s.icon?s.icon+" ":""}${tStatus(status)}</span>`;
 }
 let filterYear="전체",filterColl="전체";
 let collapsedGroups=new Set();
@@ -617,7 +626,7 @@ function getWeekLabel(dateStr){
 function nowTime(){return new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});}
 function todayDate(){return new Date().toISOString().slice(0,10);}
 
-function showToast(msg,color="#34d399"){
+function showToast(msg,color="var(--ok)"){
   const t=document.getElementById("toast");
   t.textContent=msg;t.style.color=color;t.style.display="block";
   clearTimeout(t._tid);t._tid=setTimeout(()=>t.style.display="none",2500);
@@ -656,7 +665,7 @@ function startData(){
     if(firstLoad){document.getElementById("loading").style.display="none";firstLoad=false;}
     updateHeaderSub();
     renderStock();
-  },err=>{console.error(err);showToast(t("login_err_other")+" ("+err.code+")","#f87171");}));
+  },err=>{console.error(err);showToast(t("login_err_other")+" ("+err.code+")","var(--low)");}));
   dataUnsubs.push(onSnapshot(query(collection(db,"orders"),orderBy("createdAt","desc")),snap=>{
     orders=snap.docs.map(d=>({...d.data(),id:d.id}));
     renderOrders();
@@ -767,18 +776,18 @@ function renderCartOptWrap(){
       const isSel=cartSelOpt===o.name;
       const isLow=(o.quantity||0)<1;
       return `<button onclick="window.selOpt('${o.name.replace(/'/g,"\'")}') "
-        style="padding:8px 14px;border-radius:10px;font-size:12px;font-weight:${isSel?700:500};cursor:pointer;
-          border:2px solid ${isSel?"#6366f1":isLow?"rgba(239,68,68,0.3)":"rgba(255,255,255,0.12)"};
-          background:${isSel?"rgba(99,102,241,0.25)":isLow?"rgba(239,68,68,0.05)":"rgba(255,255,255,0.05)"};
-          color:${isSel?"#a5b4fc":isLow?"#f87171":"#94a3b8"};
+        style="padding:8px 14px;border-radius:0;font-size:12px;font-weight:${isSel?700:500};cursor:pointer;
+          border:2px solid ${isSel?"var(--ink)":isLow?"var(--low)":"var(--line)"};
+          background:${isSel?"var(--line)":isLow?"transparent":"var(--bg)"};
+          color:${isSel?"var(--sub)":isLow?"var(--low)":"var(--muted)"};
           transform:${isSel?"scale(1.03)":"scale(1)"};
-          box-shadow:${isSel?"0 0 0 1px #6366f1":"none"}">
+          box-shadow:${isSel?"0 0 0 1px var(--ink)":"none"}">
         ${isSel?"✓ ":""}${tOpt(o.name)}<span style="font-size:10px;margin-left:4px;opacity:.8">${nu(o.quantity||0,"unit_pcs")}</span>
       </button>`;
     }).join("")+`</div>
     ${cartSelOpt
-      ?`<div style="margin-top:10px;padding:7px 12px;border-radius:8px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);font-size:12px;color:#a5b4fc;font-weight:600">${t("opt_selected")} ${tOpt(cartSelOpt)}</div>`
-      :`<div style="margin-top:8px;font-size:12px;color:#f87171">${t("opt_required")}</div>`}`;
+      ?`<div style="margin-top:10px;padding:7px 12px;border-radius:0;background:var(--bg);border:1px solid var(--line);font-size:12px;color:var(--sub);font-weight:600">${t("opt_selected")} ${tOpt(cartSelOpt)}</div>`
+      :`<div style="margin-top:8px;font-size:12px;color:var(--low)">${t("opt_required")}</div>`}`;
 }
 window.selOpt=name=>{cartSelOpt=name;renderCartOptWrap();updateStockLabel();};
 function updateStockLabel(){
@@ -798,7 +807,7 @@ window.confirmAddToCart=()=>{
   let stock=0;
   if(cartSelOpt&&cartTarget.options){const o=cartTarget.options.find(x=>x.name===cartSelOpt);stock=o?.quantity||0;}
   else stock=totalQty(cartTarget);
-  if(qty>stock){showToast(t("ms_over_cur",{n:stock}), "#f87171");return;}
+  if(qty>stock){showToast(t("ms_over_cur",{n:stock}), "var(--low)");return;}
   const key=cartTarget.id+(cartSelOpt||"");
   const existing=cart.find(c=>c.key===key);
   if(existing){
@@ -806,7 +815,7 @@ window.confirmAddToCart=()=>{
     let stock2=0;
     if(cartSelOpt&&cartTarget.options){const o2=cartTarget.options.find(x=>x.name===cartSelOpt);stock2=o2?.quantity||0;}
     else stock2=totalQty(cartTarget);
-    if(existing.qty+qty>stock2){showToast(t("ms_over_cur",{n:stock2}),"#f87171");return;}
+    if(existing.qty+qty>stock2){showToast(t("ms_over_cur",{n:stock2}),"var(--low)");return;}
     existing.qty+=qty;
   } else cart.push({key,itemId:cartTarget.id,itemName:cartTarget.name,optName:cartSelOpt,collection:cartTarget.collection,qty,unit:cartTarget.unit||"개"});
   closeModal("cart-modal");
@@ -819,6 +828,14 @@ function updateCartBadge(){
   const badge=document.getElementById("cart-badge");
   if(total>0){badge.style.display="flex";badge.textContent=total;}
   else badge.style.display="none";
+  // 넓은 화면에서는 장바구니가 항상 보이므로 바로 다시 그린다
+  if(window.matchMedia("(min-width:1100px)").matches) renderCart();
+}
+// 넓은 화면: 처음 열 때와 창 크기가 바뀌어 넓어질 때 장바구니 칸을 채운다
+{
+  const wideMq=window.matchMedia("(min-width:1100px)");
+  if(wideMq.matches) setTimeout(()=>renderCart(),0);
+  wideMq.addEventListener&&wideMq.addEventListener("change",e=>{ if(e.matches) renderCart(); });
 }
 
 // ── 발주 ──
@@ -826,15 +843,15 @@ window.openCheckout=()=>{
   if(!cart.length)return;
   const total=cart.reduce((a,c)=>a+c.qty,0);
   document.getElementById("checkout-list").innerHTML=cart.map(c=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(128,128,128,0.1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line2)">
       <div>
         <div style="font-size:13px;font-weight:600">${c.itemName}${c.optName?` [${c.optName}]`:""}</div>
-        <div style="font-size:10px;color:#6366f1;margin-top:1px">${c.collection}</div>
+        <div style="font-size:10px;color:var(--ink);margin-top:1px">${c.collection}</div>
       </div>
-      <div style="font-weight:800;font-size:14px">${c.qty}<span style="font-size:10px;font-weight:400;color:#475569"> ${c.unit}</span></div>
+      <div style="font-weight:800;font-size:14px">${c.qty}<span style="font-size:10px;font-weight:400;color:var(--muted)"> ${c.unit}</span></div>
     </div>`).join("")
-    +`<div style="border-top:1px solid rgba(128,128,128,0.15);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px">
-      <span style="color:#475569">${t("stat_qty")}</span><span style="font-weight:800;color:#6366f1">${nu(total,"unit_pcs")}</span></div>`;
+    +`<div style="border-top:1px solid var(--line2);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px">
+      <span style="color:var(--muted)">${t("stat_qty")}</span><span style="font-weight:800;color:var(--ink)">${nu(total,"unit_pcs")}</span></div>`;
   document.getElementById("store-name").value="";
   setTimeout(()=>initStoreAutocomplete("store-name"), 50);
   // 라디오 초기화
@@ -847,7 +864,7 @@ window.openCheckout=()=>{
   if(notice) notice.textContent="";
   ["파손","부족","오픈"].forEach(t=>{
     const lbl=document.getElementById("type-label-"+t);
-    if(lbl){lbl.style.borderColor="rgba(255,255,255,0.1)";lbl.style.background="rgba(255,255,255,0.04)";}
+    if(lbl){lbl.style.borderColor="var(--line)";lbl.style.background="var(--bg)";}
   });
   document.getElementById("checkout-modal").style.display="flex";
   setTimeout(()=>document.getElementById("store-name").focus(),100);
@@ -862,7 +879,7 @@ window.handleOpenOrderExcel = async(input) => {
   if (!file) return;
   input.value = "";
 
-  showToast(t("xl_reading"), "#60a5fa");
+  showToast(t("xl_reading"), "var(--ink)");
 
   const reader = new FileReader();
   reader.onload = async(e) => {
@@ -879,7 +896,7 @@ window.handleOpenOrderExcel = async(input) => {
           headerRow = i; break;
         }
       }
-      if (headerRow === -1) { showToast(t("xl_badformat"), "#f87171"); return; }
+      if (headerRow === -1) { showToast(t("xl_badformat"), "var(--low)"); return; }
 
       const headers = rows[headerRow].map(c => String(c||"").trim());
       const collIdx = headers.findIndex(h => h.includes("컬렉션"));
@@ -888,7 +905,7 @@ window.handleOpenOrderExcel = async(input) => {
       const qtyIdx  = headers.findIndex(h => h.includes("수량"));
 
       if (nameIdx === -1 || qtyIdx === -1) {
-        showToast(t("xl_nocol"), "#f87171"); return;
+        showToast(t("xl_nocol"), "var(--low)"); return;
       }
 
       // 데이터 파싱
@@ -912,7 +929,7 @@ window.handleOpenOrderExcel = async(input) => {
       }
 
       if (!parsed.length) {
-        showToast(t("xl_noqty"), "#f87171"); return;
+        showToast(t("xl_noqty"), "var(--low)"); return;
       }
 
       // 재고 매칭 및 부족 검사
@@ -953,7 +970,7 @@ window.handleOpenOrderExcel = async(input) => {
       showOpenOrderReviewModal(matched, insufficient, notFound);
 
     } catch(err) {
-      showToast(t("xl_readerr")+": "+err.message, "#f87171");
+      showToast(t("xl_readerr")+": "+err.message, "var(--low)");
     }
   };
   reader.readAsArrayBuffer(file);
@@ -968,41 +985,41 @@ function showOpenOrderReviewModal(matched, insufficient, notFound) {
   let insufHtml = "";
   if (insufficient.length) {
     insufHtml = `<div style="margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:6px">${t("xl_low",{n:insufficient.length})}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">${t("xl_low",{n:insufficient.length})}</div>
       ${insufficient.map((p,i) => `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);margin-bottom:4px">
-          <input type="checkbox" id="insuf-${i}" checked style="accent-color:#6366f1;width:16px;height:16px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:0;background:var(--bg);border:1px solid var(--accent);margin-bottom:4px">
+          <input type="checkbox" id="insuf-${i}" checked style="accent-color:var(--ink);width:16px;height:16px;flex-shrink:0">
           <div style="flex:1;font-size:12px">
-            <span style="color:#6366f1;font-size:10px;font-weight:600">${p.collection}</span>
+            <span style="color:var(--ink);font-size:10px;font-weight:600">${p.collection}</span>
             <span style="font-weight:700;margin-left:4px">${p.name}</span>
-            ${p.opt?`<span style="color:#94a3b8"> [${p.opt}]</span>`:""}
+            ${p.opt?`<span style="color:var(--muted)"> [${p.opt}]</span>`:""}
           </div>
           <div style="font-size:11px;text-align:right;flex-shrink:0">
-            <span style="color:#f87171">${t("xl_stockreq",{s:p.stock,r:p.qty}).split(" / ")[0]}</span>
-            <span style="color:#94a3b8"> / ${t("xl_stockreq",{s:p.stock,r:p.qty}).split(" / ")[1]||p.qty}</span>
+            <span style="color:var(--low)">${t("xl_stockreq",{s:p.stock,r:p.qty}).split(" / ")[0]}</span>
+            <span style="color:var(--muted)"> / ${t("xl_stockreq",{s:p.stock,r:p.qty}).split(" / ")[1]||p.qty}</span>
           </div>
         </div>`).join("")}
-      <div style="font-size:11px;color:#475569;margin-top:4px">${t("xl_lowhint")}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${t("xl_lowhint")}</div>
     </div>`;
   }
 
   let notFoundHtml = "";
   if (notFound.length) {
     notFoundHtml = `<div style="margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:6px">${t("xl_notfound",{n:notFound.length})}</div>
-      ${notFound.map(p=>`<div style="font-size:11px;color:#f87171;padding:3px 0">${p.collection} - ${p.name}${p.opt?` [${p.opt}]`:""}${p.why?` <span style="color:#94a3b8">— ${p.why}</span>`:""}</div>`).join("")}
+      <div style="font-size:12px;font-weight:700;color:var(--low);margin-bottom:6px">${t("xl_notfound",{n:notFound.length})}</div>
+      ${notFound.map(p=>`<div style="font-size:11px;color:var(--low);padding:3px 0">${p.collection} - ${p.name}${p.opt?` [${p.opt}]`:""}${p.why?` <span style="color:var(--muted)">— ${p.why}</span>`:""}</div>`).join("")}
     </div>`;
   }
 
   modal.innerHTML = `<div class="modal-sheet" style="max-height:90dvh;overflow-y:auto">
     <div class="modal-handle"></div>
     <div class="modal-title">${t("xl_review")}</div>
-    <div style="font-size:12px;color:#34d399;margin-bottom:12px;padding:8px 10px;background:rgba(52,211,153,0.08);border-radius:8px;border:1px solid rgba(52,211,153,0.2)">
+    <div style="font-size:12px;color:var(--ok);margin-bottom:12px;padding:8px 10px;background:var(--ok-bg);border-radius:0;border:1px solid var(--ok)">
       ${t("xl_avail",{n:matched.length})}
     </div>
     ${insufHtml}
     ${notFoundHtml}
-    <div style="font-size:11px;color:#94a3b8;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:8px;padding:9px 11px;margin-bottom:10px;line-height:1.6">
+    <div style="font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--bg);border-radius:0;padding:9px 11px;margin-bottom:10px;line-height:1.6">
       ${t("xl_tocart_hint")}
     </div>
     <button class="btn-primary" onclick="window.addOpenOrderToCart()">🛒 ${t("xl_tocart")}</button>
@@ -1030,7 +1047,7 @@ window.addOpenOrderToCart = () => {
   }).map(p => ({...p, qty: p.stock}));
 
   const finalItems = [...matched, ...checkedInsuf];
-  if (!finalItems.length) { showToast(t("ms_no_items"), "#f87171"); return; }
+  if (!finalItems.length) { showToast(t("ms_no_items"), "var(--low)"); return; }
 
   // 장바구니에 합치기 (이미 담긴 품목은 수량 합산, 재고 상한 적용)
   let added = 0, capped = 0;
@@ -1060,7 +1077,7 @@ window.addOpenOrderToCart = () => {
   updateCartBadge();
   renderCart();
   switchTab("cart");
-  showToast(t("xl_cart_ok",{n:added}) + (capped ? " ("+t("xl_cart_capped",{n:capped})+")" : ""), "#34d399");
+  showToast(t("xl_cart_ok",{n:added}) + (capped ? " ("+t("xl_cart_capped",{n:capped})+")" : ""), "var(--ok)");
 };
 
 
@@ -1077,18 +1094,18 @@ window.onOrderTypeChange=()=>{
     const lbl=document.getElementById("type-label-"+t);
     if(lbl){
       if(t===type){
-        lbl.style.borderColor=t==="파손"?"#ef4444":"#fbbf24";
-        lbl.style.background=t==="파손"?"rgba(239,68,68,0.1)":"rgba(251,191,36,0.1)";
+        lbl.style.borderColor=t==="파손"?"var(--low)":"var(--accent)";
+        lbl.style.background=t==="파손"?"transparent":"var(--bg)";
       } else {
-        lbl.style.borderColor="rgba(255,255,255,0.1)";
-        lbl.style.background="rgba(255,255,255,0.04)";
+        lbl.style.borderColor="var(--line)";
+        lbl.style.background="var(--bg)";
       }
     }
   });
 
   if(type==="파손"){
-    if(notice) notice.innerHTML="<span style='color:#ef4444'>"+t("note_photo_req")+"</span>";
-    if(reqLabel) reqLabel.innerHTML="<span style='color:#ef4444'>* "+t("req_required")+"</span>";
+    if(notice) notice.innerHTML="<span style='color:var(--low)'>"+t("note_photo_req")+"</span>";
+    if(reqLabel) reqLabel.innerHTML="<span style='color:var(--low)'>* "+t("req_required")+"</span>";
     if(photoWrap) photoWrap.style.display="";
   } else if(type==="부족"){
     if(notice) notice.textContent=t("note_photo_opt");
@@ -1113,10 +1130,10 @@ function showLateOrderModal(shipDate){
       <div style="font-size:36px;margin-bottom:8px">⏰</div>
       <div style="font-weight:800;font-size:16px;margin-bottom:8px">${t("late_title").replace("⏰ ","")}</div>
     </div>
-    <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.7;text-align:center">
+    <div style="background:var(--bg);border:1px solid var(--accent);border-radius:0;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.7;text-align:center">
       ${t("late_now")}<br><br>
-      <strong>${t("late_count",{d:`<span style="color:#34d399;font-size:15px">${shipDate}</span>`})}</strong><br><br>
-      <span style="font-size:11px;color:#475569">${t("late_hint")}</span>
+      <strong>${t("late_count",{d:`<span style="color:var(--ok);font-size:15px">${shipDate}</span>`})}</strong><br><br>
+      <span style="font-size:11px;color:var(--muted)">${t("late_hint")}</span>
     </div>
     <button onclick="document.getElementById('late-order-modal').remove();window.confirmOrder(true);"
       class="btn-primary" style="margin-bottom:8px">${t("late_agree")}</button>
@@ -1139,7 +1156,7 @@ function initStoreAutocomplete(inputId){
   wrap.style.position = "relative";
   const dropdown = document.createElement("div");
   dropdown.id = inputId + "-dropdown";
-  dropdown.style.cssText = "position:absolute;top:100%;left:0;right:0;background:#1e2235;border:1px solid rgba(99,102,241,0.3);border-radius:10px;max-height:200px;overflow-y:auto;z-index:999;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4)";
+  dropdown.style.cssText = "position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--line);border-radius:0;max-height:200px;overflow-y:auto;z-index:999;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4)";
   wrap.appendChild(dropdown);
 
   input.addEventListener("input", ()=>{
@@ -1149,8 +1166,8 @@ function initStoreAutocomplete(inputId){
     if(!matches.length){ dropdown.style.display="none"; return; }
     dropdown.innerHTML = matches.slice(0,8).map(s=>
       `<div onclick="document.getElementById('${inputId}').value='${s.replace(/'/g,"\'")}';document.getElementById('${inputId}-dropdown').style.display='none'"
-        style="padding:10px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05)"
-        onmouseover="this.style.background='rgba(99,102,241,0.15)'"
+        style="padding:10px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bg)"
+        onmouseover="this.style.background='var(--bg)'"
         onmouseout="this.style.background=''">${s}</div>`
     ).join("");
     dropdown.style.display="block";
@@ -1186,17 +1203,17 @@ function compressImage(file, maxW=1600, quality=0.9){
 window.previewPhotos=async()=>{
   const files=Array.from(document.getElementById("order-photos")?.files||[]);
   if(!files.length)return;
-  if(files.length>3){showToast(t("ms_max3"),"#fbbf24");return;}
+  if(files.length>3){showToast(t("ms_max3"),"var(--accent)");return;}
   orderPhotosBase64=[];
   const wrap=document.getElementById("photo-preview-wrap");
-  if(wrap)wrap.innerHTML=`<div style="font-size:11px;color:#475569;width:100%;margin-bottom:4px">${t("compressing")}</div>`;
+  if(wrap)wrap.innerHTML=`<div style="font-size:11px;color:var(--muted);width:100%;margin-bottom:4px">${t("compressing")}</div>`;
   for(const file of files){
     const compressed=await compressImage(file);
     orderPhotosBase64.push(compressed);
     if(wrap){
       const img=document.createElement("img");
       img.src=compressed;
-      img.style.cssText="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.1)";
+      img.style.cssText="width:72px;height:72px;object-fit:cover;border-radius:0;border:1px solid var(--line)";
       wrap.appendChild(img);
     }
   }
@@ -1209,11 +1226,11 @@ window.confirmOrder=async(skipLateCheck=false)=>{
   const storeName=document.getElementById("store-name").value.trim();
   const orderType=document.querySelector('input[name="order-type"]:checked')?.value;
   const reason=document.getElementById("order-reason").value.trim();
-  if(!storeName){showToast(t("ms_need_store"),"#f87171");return;}
-  if(!orderType){showToast(t("ms_need_type"),"#f87171");return;}
+  if(!storeName){showToast(t("ms_need_store"),"var(--low)");return;}
+  if(!orderType){showToast(t("ms_need_type"),"var(--low)");return;}
   // 오픈 매장 발주는 상세 사유 선택 사항
-  if(orderType!=="오픈" && !reason){showToast(t("ms_need_detail"),"#f87171");return;}
-  if(orderType==="파손"&&orderPhotosBase64.length===0){showToast(t("ms_need_photo"),"#f87171");return;}
+  if(orderType!=="오픈" && !reason){showToast(t("ms_need_detail"),"var(--low)");return;}
+  if(orderType==="파손"&&orderPhotosBase64.length===0){showToast(t("ms_need_photo"),"var(--low)");return;}
 
   // 늦은 접수 경고 팝업
   if(!skipLateCheck && isLateOrder()){
@@ -1263,7 +1280,7 @@ window.confirmOrder=async(skipLateCheck=false)=>{
       date:todayDate(),time:nowTime(),
       items:cart.map(c=>({itemId:c.itemId,itemName:c.itemName,optName:c.optName||null,collection:c.collection,qty:c.qty,unit:c.unit}))
     });
-  }catch(e){showToast(t("ms_save_err")+": "+e.message,"#f87171");return;}
+  }catch(e){showToast(t("ms_save_err")+": "+e.message,"var(--low)");return;}
   cart=[];orderPhotosBase64=[];openOrderFromExcel=false;updateCartBadge();
   closeModal("checkout-modal");
   showToast(t("ms_order_ok"));
@@ -1324,7 +1341,7 @@ function renderStock(){
   });
 
   if(!Object.keys(grouped).length){
-    document.getElementById("stock-groups").innerHTML=`<div style="text-align:center;padding:50px;font-size:14px;color:#475569">${t("loading")}</div>`;return;
+    document.getElementById("stock-groups").innerHTML=`<div style="text-align:center;padding:50px;font-size:14px;color:var(--muted)">${t("loading")}</div>`;return;
   }
 
   // 그룹별 최소 _order 기준 정렬 (프로그램 = 시트 동일 순서)
@@ -1385,17 +1402,17 @@ function renderCart(){
     page.innerHTML=`<div style="text-align:center;padding:60px 20px">
       <div style="font-size:40px;margin-bottom:12px">🛒</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">${t("cart_empty")}</div>
-      <div style="font-size:13px;color:#475569;margin-bottom:20px">${t("cart_empty_desc")}</div>
-      <button onclick="window.switchTab('stock')" class="btn-primary" style="width:auto;padding:10px 24px;border-radius:99px">${t("cart_goto_stock")}</button>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">${t("cart_empty_desc")}</div>
+      <button onclick="window.switchTab('stock')" class="btn-primary" style="width:auto;padding:10px 24px;border-radius:0">${t("cart_goto_stock")}</button>
       <div style="margin-top:14px">
-        <label style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:12px;background:rgba(52,211,153,0.1);border:1.5px solid rgba(52,211,153,0.25);color:#34d399;font-size:14px;font-weight:700;cursor:pointer">
+        <label style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:0;background:var(--ok-bg);border:1.5px solid var(--ok);color:var(--ok);font-size:14px;font-weight:700;cursor:pointer">
           📂 ${t("cart_excel_open")}
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="window.handleOpenOrderExcel(this)">
         </label>
         <div style="margin-top:10px">
-          <a href="${ORDER_FORM_URL}" download onclick="showToast(t('form_downloading'),'#60a5fa')"
-            style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:12px;
-                   background:rgba(99,102,241,0.1);border:1.5px solid rgba(99,102,241,0.25);color:#a5b4fc;
+          <a href="${ORDER_FORM_URL}" download onclick="showToast(t('form_downloading'),'var(--ink)')"
+            style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:0;
+                   background:var(--bg);border:1.5px solid var(--line);color:var(--sub);
                    font-size:14px;font-weight:700;cursor:pointer;text-decoration:none">
             📄 ${t("cart_form_dl")}
           </a>
@@ -1410,29 +1427,29 @@ function renderCart(){
     <div class="cart-item">
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:14px">${c.itemName}${c.optName?` [${tOpt(c.optName)}]`:""}</div>
-        <div style="font-size:11px;color:#6366f1;margin-top:2px">${c.collection}</div>
+        <div style="font-size:11px;color:var(--ink);margin-top:2px">${c.collection}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         <button class="cart-qty-btn" data-idx="${i}" data-delta="-1" title="-1"
-          style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">−</button>
+          style="width:30px;height:30px;border-radius:0;background:var(--bg);border:1px solid var(--line);color:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">−</button>
         <div style="min-width:52px;text-align:center;font-weight:800;font-size:18px">${c.qty}<span class="unit">${c.unit==="개"?t("unit_pcs"):c.unit}</span></div>
         <button class="cart-qty-btn" data-idx="${i}" data-delta="1" title="+1"
-          style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">＋</button>
+          style="width:30px;height:30px;border-radius:0;background:var(--bg);border:1px solid var(--line);color:inherit;font-size:17px;font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">＋</button>
       </div>
-      <button onclick="removeFromCart(${i})" style="padding:4px 10px;border-radius:8px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);color:#f87171;font-size:12px;font-weight:600;flex-shrink:0">${t("btn_remove")}</button>
+      <button onclick="removeFromCart(${i})" style="padding:4px 10px;border-radius:0;background:transparent;border:1px solid var(--low);color:var(--low);font-size:12px;font-weight:600;flex-shrink:0">${t("btn_remove")}</button>
     </div>`).join("")
     +`<button onclick="window.openCheckout()" class="btn-primary" style="margin-top:8px">🚀 ${t("btn_order")} (${nu(total,"unit_pcs")})</button>
-    <label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:12px;background:rgba(52,211,153,0.1);border:1.5px solid rgba(52,211,153,0.25);color:#34d399;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px">
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:0;background:var(--ok-bg);border:1.5px solid var(--ok);color:var(--ok);font-size:14px;font-weight:700;cursor:pointer;margin-top:8px">
       📂 ${t("cart_excel_open")}
       <input type="file" accept=".xlsx,.xls" style="display:none" onchange="window.handleOpenOrderExcel(this)">
     </label>
-      <a href="${ORDER_FORM_URL}" download onclick="showToast(t('form_downloading'),'#60a5fa')"
-        style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:12px;
-               background:rgba(99,102,241,0.1);border:1.5px solid rgba(99,102,241,0.25);color:#a5b4fc;
+      <a href="${ORDER_FORM_URL}" download onclick="showToast(t('form_downloading'),'var(--ink)')"
+        style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:0;
+               background:var(--bg);border:1.5px solid var(--line);color:var(--sub);
                font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;text-decoration:none;box-sizing:border-box">
         📄 ${t("cart_form_dl")}
       </a>
-    <button onclick="clearCart()" style="width:100%;padding:11px;border-radius:12px;background:rgba(255,255,255,0.06);color:#94a3b8;font-weight:600;font-size:14px;margin-top:8px;border:none;cursor:pointer">${t("cart_clear")}</button>
+    <button onclick="clearCart()" style="width:100%;padding:11px;border-radius:0;background:var(--bg);color:var(--muted);font-weight:600;font-size:14px;margin-top:8px;border:none;cursor:pointer">${t("cart_clear")}</button>
     <div style="height:80px"></div>`;
 }
 window.removeFromCart=i=>{cart.splice(i,1);updateCartBadge();renderCart();};
@@ -1456,7 +1473,7 @@ window.changeCartQty=(i,delta)=>{
     if(c.optName&&item.options?.length){ const o=item.options.find(x=>x.name===c.optName); stock=o?(o.quantity||0):0; }
     else stock=totalQty(item);
   }
-  if(delta>0&&next>stock){ showToast(t("ms_over_cur",{n:stock}),"#f87171"); return; }
+  if(delta>0&&next>stock){ showToast(t("ms_over_cur",{n:stock}),"var(--low)"); return; }
   c.qty=next; updateCartBadge(); renderCart();
 };
 window.clearCart=()=>{cart=[];openOrderFromExcel=false;updateCartBadge();renderCart();};
@@ -1528,9 +1545,9 @@ function getNoticeBanner(){
   if(day===6||day===0){
     // 토/일 - 다음 주로 집계
     return{
-      color:"#fbbf24",
-      bg:"rgba(251,191,36,0.08)",
-      border:"rgba(251,191,36,0.2)",
+      color:"var(--accent)",
+      bg:"var(--bg)",
+      border:"var(--accent)",
       icon:"📅",
       title:t("bn_weekend"),
       desc:t("bn_now_ship",{d:nextNextFmt})
@@ -1538,9 +1555,9 @@ function getNoticeBanner(){
   } else if(day===1||day===2){
     // 월,화 - 이번 주 발송 마감, 지금 주문은 차차주
     return{
-      color:"#f87171",
-      bg:"rgba(248,113,113,0.08)",
-      border:"rgba(248,113,113,0.2)",
+      color:"var(--low)",
+      bg:"transparent",
+      border:"var(--low)",
       icon:"⚠️",
       title:t("bn_this_until",{a:friFmt,d:tueFmt}),
       desc:t("bn_today_new",{d:nextNextFmt})
@@ -1548,9 +1565,9 @@ function getNoticeBanner(){
   } else {
     // 수~금
     return{
-      color:"#34d399",
-      bg:"rgba(52,211,153,0.08)",
-      border:"rgba(52,211,153,0.2)",
+      color:"var(--ok)",
+      bg:"var(--ok-bg)",
+      border:"var(--ok)",
       icon:"📦",
       title:t("bn_ship_this",{d:tueFmt}),
       desc:t("bn_edit_until",{d:friFmt})
@@ -1561,13 +1578,13 @@ function getNoticeBanner(){
 // ── 수량 수정 모달 (매니저용) ──
 let editOrderId=null,editItemIdx=null;
 window.openOrderEditModal=(orderId,itemIdx,itemName,currentQty,unit)=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
+  if(!canEdit()){showToast(t("ms_closed"),"var(--low)");return;}
   editOrderId=orderId;editItemIdx=itemIdx;
   const modal=document.createElement("div");modal.className="modal-bg";modal.id="order-edit-modal";
   modal.innerHTML=`<div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">${itemName} — ${t("lbl_qty")}</div>
-    <div style="font-size:22px;font-weight:800;color:#6366f1;margin-bottom:12px">${unit==="개"?nu(currentQty,"unit_pcs"):currentQty+unit}</div>
+    <div style="font-size:22px;font-weight:800;color:var(--ink);margin-bottom:12px">${unit==="개"?nu(currentQty,"unit_pcs"):currentQty+unit}</div>
     <div class="field-wrap"><div class="field-label">${t("lbl_newqty")}</div>
       <input id="order-edit-qty" type="number" min="1" value="${currentQty}" class="field-input"
         onkeydown="if(event.key==='Enter')confirmOrderEdit()">
@@ -1581,9 +1598,9 @@ window.openOrderEditModal=(orderId,itemIdx,itemName,currentQty,unit)=>{
 };
 
 window.confirmOrderEdit=async()=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
+  if(!canEdit()){showToast(t("ms_closed"),"var(--low)");return;}
   const newQty=parseInt(document.getElementById("order-edit-qty")?.value);
-  if(!newQty||newQty<1){showToast(t("ms_bad_qty"),"#f87171");return;}
+  if(!newQty||newQty<1){showToast(t("ms_bad_qty"),"var(--low)");return;}
   const order=orders.find(o=>o.id===editOrderId);
   if(!order)return;
   const oldQty=order.items[editItemIdx].qty;
@@ -1596,11 +1613,11 @@ window.confirmOrderEdit=async()=>{
     if(it.optName&&clone.options){
       const o=clone.options.find(x=>x.name===it.optName);
       if(o){
-        if(diff>0&&o.quantity<diff){showToast(t("ms_over_add",{n:o.quantity}),"#f87171");return;}
+        if(diff>0&&o.quantity<diff){showToast(t("ms_over_add",{n:o.quantity}),"var(--low)");return;}
         o.quantity=Math.max(0,o.quantity-diff);
       }
     }else{
-      if(diff>0&&clone.quantity<diff){showToast(t("ms_over_add",{n:clone.quantity}),"#f87171");return;}
+      if(diff>0&&clone.quantity<diff){showToast(t("ms_over_add",{n:clone.quantity}),"var(--low)");return;}
       clone.quantity=Math.max(0,(clone.quantity||0)-diff);
     }
     try{await setDoc(doc(collection(db,"items"),item.id),clone);}catch(e){}
@@ -1611,7 +1628,7 @@ window.confirmOrderEdit=async()=>{
     await setDoc(doc(collection(db,"orders"),editOrderId),{...order,items:updatedItems},{merge:false});
     document.getElementById("order-edit-modal")?.remove();
     showToast(t("ms_qty_ok"));
-  }catch(e){showToast(t("ms_save_err")+": "+e.message,"#f87171");}
+  }catch(e){showToast(t("ms_save_err")+": "+e.message,"var(--low)");}
 };
 
 // ── 렌더 출고요청 ──
@@ -1652,28 +1669,28 @@ function renderOrders(){
 
   // 안내 배너 (검색 중에는 결과 요약으로 대체)
   const banner=searching
-    ? `<div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#a5b4fc">
+    ? `<div style="background:var(--bg);border:1px solid var(--line);border-radius:0;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--sub)">
          🔍 "<strong>${q}</strong>" — <strong>${t("search_result",{n:filteredOrders.length})}</strong>
        </div>`
-    : `<div style="background:${notice.bg};border:1px solid ${notice.border};border-radius:12px;padding:12px 14px;margin-bottom:16px">
+    : `<div style="background:${notice.bg};border:1px solid ${notice.border};border-radius:0;padding:12px 14px;margin-bottom:16px">
     <div style="font-weight:700;font-size:13px;color:${notice.color};margin-bottom:4px">${notice.icon} ${notice.title}</div>
-    <div style="font-size:12px;color:${isDark?"#94a3b8":"#6b7280"}">${notice.desc}</div>
+    <div style="font-size:12px;color:${isDark?"var(--muted)":"var(--muted)"}">${notice.desc}</div>
   </div>`;
 
   if(!Object.keys(grouped).length){
-    el.innerHTML=banner+`<div style="text-align:center;padding:40px 20px;font-size:14px;color:#475569">${searching?t("search_none"):t("no_orders")}</div>`;return;
+    el.innerHTML=banner+`<div style="text-align:center;padding:40px 20px;font-size:14px;color:var(--muted)">${searching?t("search_none"):t("no_orders")}</div>`;return;
   }
 
   el.innerHTML=banner+Object.entries(grouped).map(([week,wOrders])=>`
     <div class="week-group">
       <div class="week-header" onclick="window.toggleWeek('${week.replace(/[/]/g,"_")}')" style="cursor:pointer;border-radius:${isWeekCollapsed(week.replace(/[/]/g,"_"))?"10px":"10px 10px 0 0"}">
         <span>📅</span>
-        <span style="color:#60a5fa">${fmtWeek(week)}</span>
-        <span style="margin-left:auto;font-size:10px;color:#3b82f6">${nu(wOrders.length,"unit_case")}</span>
-        <span style="font-size:11px;color:#475569;margin-left:6px">${isWeekCollapsed(week.replace(/[/]/g,"_"))?"▶":"▼"}</span>
+        <span style="color:var(--ink)">${fmtWeek(week)}</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--ink)">${nu(wOrders.length,"unit_case")}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:6px">${isWeekCollapsed(week.replace(/[/]/g,"_"))?"▶":"▼"}</span>
       </div>
       ${isWeekCollapsed(week.replace(/[/]/g,"_"))?"":(`
-      <div style="padding:7px 14px;font-size:11px;font-weight:600;color:#34d399;background:rgba(52,211,153,0.06);border-left:1px solid rgba(52,211,153,0.2);border-right:1px solid rgba(52,211,153,0.2)">
+      <div style="padding:7px 14px;font-size:11px;font-weight:600;color:var(--ok);background:var(--ok-bg);border-left:1px solid var(--ok);border-right:1px solid var(--ok)">
         📦 ${(()=>{
           // 주차 레이블에서 월요일 날짜 추출해서 차주 화요일 계산
           const parts=week.match(/(\d+)\/(\d+)/);
@@ -1686,8 +1703,8 @@ function renderOrders(){
         })()}
       </div>
       <div class="week-cycle">
-        ${[{l:t("monfri"),d:t("cyc_intake"),c:"#8b5cf6"},{l:(DAY_BADGE[LANG]||KO_DAYS)[1],d:t("cyc_prep"),c:"#3b82f6"},{l:(DAY_BADGE[LANG]||KO_DAYS)[2],d:t("cyc_ship"),c:"#10b981"}].map(s=>
-          `<div class="cycle-badge"><span style="font-weight:700;color:${s.c};padding:1px 6px;border-radius:99px;background:${s.c}20">${s.l}</span><span style="color:${isDark?"#475569":"#6b7280"};font-size:10px">${s.d}</span></div>`
+        ${[{l:t("monfri"),d:t("cyc_intake"),c:"var(--sub)"},{l:(DAY_BADGE[LANG]||KO_DAYS)[1],d:t("cyc_prep"),c:"var(--ink)"},{l:(DAY_BADGE[LANG]||KO_DAYS)[2],d:t("cyc_ship"),c:"var(--ok)"}].map(s=>
+          `<div class="cycle-badge"><span style="font-weight:700;color:${s.c};padding:1px 6px;border-radius:0;background:transparent;font-size:11px">${s.l}</span><span style="color:${isDark?"var(--muted)":"var(--muted)"};font-size:10px">${s.d}</span></div>`
         ).join("")}
       </div>
       <div class="order-list">
@@ -1697,23 +1714,23 @@ function renderOrders(){
             <div style="font-weight:700;font-size:14px;flex:1;display:flex;align-items:center;gap:6px">
               ${order.storeName}
               ${editable&&order.status==="검토중"?`<button onclick="openStoreNameEditModal('${order.id}','${order.storeName.replace(/'/g,"\\'")}')"
-                style="padding:2px 7px;border-radius:5px;font-size:9px;font-weight:700;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;cursor:pointer;flex-shrink:0">✏️ ${t("btn_edit")}</button>`:""}
+                style="padding:2px 7px;border-radius:0;font-size:9px;font-weight:700;background:var(--bg);border:1px solid var(--line);color:var(--sub);cursor:pointer;flex-shrink:0">✏️ ${t("btn_edit")}</button>`:""}
             </div>
             ${statusBadgeHTML(order.status)}
-            <div style="font-size:10px;color:${isDark?"#475569":"#9ca3af"}">${order.date||""}</div>
+            <div style="font-size:10px;color:${isDark?"var(--muted)":"var(--muted)"}">${order.date||""}</div>
           </div>
-          ${(order.status==="취소"&&order.cancelReason)?`<div style="font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;margin-bottom:8px">${t("rsn_cancel")}: ${order.cancelReason}</div>`:""}
-          ${(order.status==="반려"&&order.rejectReason)?`<div style="font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;margin-bottom:8px">${t("rsn_reject")}: ${order.rejectReason}</div>`:""}
-          ${order.reason?`<div style="font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);color:#a5b4fc;margin-bottom:8px">${t("rsn_request")}: ${fmtReason(order.reason)}</div>`:""}
-          ${order.photos?.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${order.photos.map(p=>`<img src="${p}" style="width:60px;height:60px;object-fit:cover;border-radius:7px;border:1px solid rgba(255,255,255,0.1)">`).join("")}</div>`:""}
+          ${(order.status==="취소"&&order.cancelReason)?`<div style="font-size:11px;padding:6px 10px;border-radius:0;background:transparent;border:1px solid var(--low);color:var(--low);margin-bottom:8px">${t("rsn_cancel")}: ${order.cancelReason}</div>`:""}
+          ${(order.status==="반려"&&order.rejectReason)?`<div style="font-size:11px;padding:6px 10px;border-radius:0;background:transparent;border:1px solid var(--low);color:var(--low);margin-bottom:8px">${t("rsn_reject")}: ${order.rejectReason}</div>`:""}
+          ${order.reason?`<div style="font-size:11px;padding:6px 10px;border-radius:0;background:var(--bg);border:1px solid var(--bg);color:var(--sub);margin-bottom:8px">${t("rsn_request")}: ${fmtReason(order.reason)}</div>`:""}
+          ${order.photos?.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${order.photos.map(p=>`<img src="${p}" style="width:60px;height:60px;object-fit:cover;border-radius:0;border:1px solid var(--line)">`).join("")}</div>`:""}
           <div style="display:flex;flex-wrap:wrap;gap:4px">
             ${order.items.map((it,idx)=>`
             <div class="item-chip" style="display:inline-flex;align-items:center;gap:4px">
-              <span style="font-size:9px;color:#6366f1;font-weight:600">${it.collection}</span>
+              <span style="font-size:9px;color:var(--ink);font-weight:600">${it.collection}</span>
               ${it.itemName}${it.optName?` [${tOpt(it.optName)}]`:""}
-              <strong style="color:${isDark?"#e2e8f0":"#111827"}">${it.unit==="개"?nu(it.qty,"unit_pcs"):it.qty+it.unit}</strong>
+              <strong style="color:${isDark?"var(--ink)":"var(--ink)"}">${it.unit==="개"?nu(it.qty,"unit_pcs"):it.qty+it.unit}</strong>
               ${editable&&order.status==="검토중"?`<button onclick="openOrderEditModal('${order.id}',${idx},'${it.itemName}${it.optName?" ["+it.optName+"]":""}',${it.qty},'${it.unit}')"
-                style="padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;cursor:pointer;flex-shrink:0">${t("btn_edit")}</button>`:""}
+                style="padding:1px 6px;border-radius:0;font-size:9px;font-weight:700;background:var(--bg);border:1px solid var(--line);color:var(--sub);cursor:pointer;flex-shrink:0">${t("btn_edit")}</button>`:""}
             </div>`).join("")}
           </div>
         </div>`).join("")}
@@ -1752,7 +1769,7 @@ window.toggleWeek=wk=>{
 // ── 매장명 수정 모달 ──
 let editStoreOrderId=null;
 window.openStoreNameEditModal=(orderId,currentName)=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
+  if(!canEdit()){showToast(t("ms_closed"),"var(--low)");return;}
   editStoreOrderId=orderId;
   const modal=document.createElement("div");modal.className="modal-bg";modal.id="store-edit-modal";
   modal.innerHTML=`<div class="modal-sheet">
@@ -1775,16 +1792,16 @@ window.openStoreNameEditModal=(orderId,currentName)=>{
 };
 
 window.confirmStoreNameEdit=async()=>{
-  if(!canEdit()){showToast(t("ms_closed"),"#f87171");return;}
+  if(!canEdit()){showToast(t("ms_closed"),"var(--low)");return;}
   const newName=document.getElementById("store-edit-input")?.value.trim();
-  if(!newName){showToast(t("ms_need_store"),"#f87171");return;}
+  if(!newName){showToast(t("ms_need_store"),"var(--low)");return;}
   const order=orders.find(o=>o.id===editStoreOrderId);
   if(!order)return;
   try{
     await setDoc(doc(collection(db,"orders"),editStoreOrderId),{...order,storeName:newName},{merge:false});
     document.getElementById("store-edit-modal")?.remove();
     showToast(t("ms_store_ok"));
-  }catch(e){showToast(t("ms_save_err")+": "+e.message,"#f87171");}
+  }catch(e){showToast(t("ms_save_err")+": "+e.message,"var(--low)");}
 };
 
 // ── 초기 언어 적용 ──
@@ -1801,7 +1818,7 @@ window.confirmStoreNameEdit=async()=>{
   });
   // 언어 선택 항목 hover
   document.querySelectorAll(".lang-opt").forEach(el=>{
-    el.addEventListener("mouseenter",()=>el.style.background="rgba(255,255,255,0.08)");
+    el.addEventListener("mouseenter",()=>el.style.background="var(--bg)");
     el.addEventListener("mouseleave",()=>el.style.background="");
   });
 })();
