@@ -284,6 +284,25 @@ body.dark .scallop{background-image:radial-gradient(circle at 8px 0,transparent 
 .kpi .v{font-size:26px;font-weight:900;line-height:1.1}
 .kpi.acc .v{color:var(--accent)}
 .kpi.low .v{color:var(--low)}
+
+/* ══ 시연판 화면 구성: 주문 목록 표 ══ */
+.st-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.st-chips .fbtn .st-n{font-weight:400;opacity:.75;margin-left:2px}
+.o-head{display:none}
+.week-cycle .cycle-badge>span:first-child{font-size:11px}
+.o-row{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"store status" "items items" "date date";gap:6px 10px;align-items:start}
+.o-store{grid-area:store;min-width:0}
+.o-items{grid-area:items;min-width:0}
+.o-date{grid-area:date}
+.o-date>div{text-align:left!important}
+.o-status{grid-area:status}
+.o-store>div:first-child{margin-bottom:6px}
+.o-row.dim{opacity:.6}
+@media(min-width:900px){
+  .o-head{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) 90px 130px;gap:14px;padding:9px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--sub);border-bottom:1px solid var(--ink);background:var(--surface)}
+  .o-row{grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) 90px 130px;grid-template-areas:"store items date status";gap:14px}
+  .o-date>div{text-align:left!important}
+}
 @media(max-width:700px){.adm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){
   .brand-title{font-size:14px;letter-spacing:.1em}
@@ -1724,6 +1743,15 @@ window.kpiGo=k=>{
   if(k==="low"){ if(!showLowOnly) window.toggleLowOnly(); switchTab("stock"); return; }
   if(typeof window.setOrderStatusFilter==="function") window.setOrderStatusFilter(k);
 };
+// ── 주문 상태 칩 (시연판): 전체 / 상태별 개수, 누르면 그 상태만 ──
+let orderStatusFilter="전체";
+const STATUS_GROUPS={"진행":["승인","준비중","출고대기"]};
+window.setOrderStatusFilter=k=>{ orderStatusFilter=(orderStatusFilter===k&&k!=="전체")?"전체":k; switchTab("orders"); renderOrders(); };
+function statusMatch(o){
+  if(orderStatusFilter==="전체") return true;
+  const st=o.status||"검토중";
+  return (STATUS_GROUPS[orderStatusFilter]||[orderStatusFilter]).includes(st);
+}
 function renderOrders(){
   renderKpis();
   const currentWeek=getWeekLabel(new Date().toISOString());
@@ -1731,11 +1759,21 @@ function renderOrders(){
   const currentMonthKey=now.getFullYear()+"-"+(now.getMonth()+1);
   const currentYearKey=""+now.getFullYear();
   const q=orderSearch.trim();
-  const searching=!!q;
-  const filteredOrders=orders.filter(o=>matchesOrderSearch(o,q));
-  const banner=searching
+  const searchedOrders=orders.filter(o=>matchesOrderSearch(o,q));
+  const filteredOrders=searchedOrders.filter(statusMatch);
+  // 검색 중이거나 상태를 고른 경우에는 모든 묶음을 펼쳐서 보여준다
+  const searching=!!q||orderStatusFilter!=="전체";
+  const chipList=["전체","검토중","승인","준비중","출고대기","출고완료","반려","취소"];
+  const chips="<div class=\"st-chips\">"+chipList.map(k=>{
+      const n=k==="전체"?searchedOrders.length:searchedOrders.filter(o=>(o.status||"검토중")===k).length;
+      const on=orderStatusFilter===k||(k==="전체"&&orderStatusFilter==="전체");
+      return "<button type=\"button\" class=\"fbtn"+(on?" on":"")+"\" onclick=\"window.setOrderStatusFilter('"+k+"')\">"+k+(k==="전체"?"":" <span class=\"st-n\">"+n+"</span>")+"</button>";
+    }).join("")
+    +(STATUS_GROUPS[orderStatusFilter]?"<button type=\"button\" class=\"fbtn on\" onclick=\"window.setOrderStatusFilter('전체')\">진행 중 ✕</button>":"")
+    +"</div>";
+  const banner=chips+(q
     ? "<div style=\"background:var(--bg);border:1px solid var(--line);border-radius:0;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--sub)\">🔍 \""+escH(q)+"\" 검색 결과 <strong>"+filteredOrders.length+"건</strong></div>"
-    : "";
+    : "");
 
   const weekGrouped={};
   filteredOrders.forEach(o=>{
@@ -1776,7 +1814,7 @@ function renderOrders(){
 
   const el=document.getElementById("orders-list");
   if(!Object.keys(weekGrouped).length){
-    el.innerHTML=banner+"<div style=\"text-align:center;padding:40px 20px;font-size:14px;color:var(--muted)\">"+(searching?"검색 결과가 없어요":"출고 요청 내역이 없어요")+"</div>";
+    el.innerHTML=banner+"<div style=\"text-align:center;padding:40px 20px;font-size:14px;color:var(--muted)\">"+(searching?"해당하는 출고 요청이 없어요":"출고 요청 내역이 없어요")+"</div>";
     return;
   }
 
@@ -1822,7 +1860,7 @@ function renderOrders(){
               [{l:"월~금",d:"주문 접수",c:"var(--sub)"},{l:"월",d:"준비·택배접수",c:"var(--ink)"},{l:"화",d:"발송",c:"var(--ok)"}].forEach(s=>{
                 html+="<div class=\"cycle-badge\"><span style=\"font-weight:700;color:"+s.c+";padding:1px 6px;border-radius:0;background:transparent\">"+s.l+"</span><span style=\"color:"+(isDark?"var(--muted)":"var(--muted)")+";font-size:10px\">"+s.d+"</span></div>";
               });
-              html+="</div><div class=\"order-list\">";
+              html+="</div><div class=\"order-list\"><div class=\"o-head\"><span>매장 · 요청 사유</span><span>요청 품목</span><span>요청일</span><span>상태</span></div>";
               wOrders.forEach(order=>{
                 html+=renderOrderCard(order);
               });
@@ -1887,13 +1925,9 @@ function renderOrderCard(order){
     +(canShip?"<button class=\"ship-order-btn\" data-oid=\""+order.id+"\" title=\"쉬핑 리스트 다운로드\" style=\"padding:2px 6px;border-radius:0;font-size:11px;background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok);cursor:pointer;flex-shrink:0\">✈️</button>":"")
     +"</div>";
 
-  // 헤더 행 (1 depth)
-  let html="<div class=\"order-row\">"
-    +"<div style=\"display:flex;align-items:center;gap:6px;margin-bottom:8px\">"
-      +storeRow
-      +statusBtn
-      +dateMeta
-    +"</div>";
+  // 표 한 줄 (시연판): [매장·사유] [품목] [요청일] [상태]
+  let html="<div class=\"order-row o-row"+(["반려","취소"].includes(s)?" dim":"")+"\">"
+    +"<div class=\"o-store\">"+storeRow;
 
   // 사유
   if(order.reason) html+="<div style=\"font-size:11px;padding:6px 10px;border-radius:0;background:var(--bg);border:1px solid var(--bg);color:var(--sub);margin-bottom:6px\">📝 "+escH(order.reason)+"</div>";
@@ -1909,6 +1943,7 @@ function renderOrderCard(order){
   if(s==="취소"&&order.cancelReason) html+="<div style=\"font-size:11px;padding:6px 10px;border-radius:0;background:transparent;border:1px solid var(--low);color:var(--low);margin-bottom:6px\">🚫 취소 사유: "+escH(order.cancelReason)+"</div>";
   if(s==="반려"&&order.rejectReason) html+="<div style=\"font-size:11px;padding:6px 10px;border-radius:0;background:transparent;border:1px solid var(--low);color:var(--low);margin-bottom:6px\">❌ 반려 사유: "+escH(order.rejectReason)+"</div>";
 
+  html+="</div><div class=\"o-items\">";
   // 재고 품목
   const chips=order.items.map(it=>"<div class=\"item-chip\"><span style=\"font-size:9px;color:var(--ink);font-weight:600;margin-right:2px\">"+escH(it.collection)+"</span>"+escH(it.itemName)+(it.optName?" ["+escH(it.optName)+"]":"")+"<strong style=\"color:"+(isDark?"var(--ink)":"var(--ink)")+";margin-left:3px\">"+it.qty+escH(it.unit)+"</strong></div>");
   const SHOW=3;
@@ -1924,6 +1959,7 @@ function renderOrderCard(order){
       +"</div>";
   }
 
+  html+="</div><div class=\"o-date\">"+dateMeta+"</div><div class=\"o-status\">"+statusBtn+"</div>";
   html+="</div>"; // order-row 닫기
   return html;
 }
