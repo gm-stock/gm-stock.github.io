@@ -15,7 +15,7 @@
 
 - 빌드 도구 없음. HTML 파일 하나에 CSS·JS가 모두 들어 있는 단일 파일 구조.
 - 호스팅: GitHub Pages, `main` 브랜치가 곧 배포본. `main`에 머지되면 바로 실서비스에 반영된다.
-- 외부 라이브러리: Firebase JS SDK 10.12.0(app, firestore), SheetJS(xlsx) 0.18.5 — CDN 로드.
+- 외부 라이브러리: Firebase JS SDK 10.12.0(app, firestore, auth), SheetJS(xlsx) 0.18.5 — CDN 로드.
 - 이 저장소와 `tb-stock/tb-stock.github.io`(템버린즈)는 거의 같은 구조의 쌍둥이 앱이다.
   한쪽의 버그 수정이나 기능은 다른 쪽에도 필요한지 사용자에게 확인한다.
 
@@ -32,7 +32,30 @@
 - `STOCK_HELD`(검토중~출고완료) 상태의 주문은 재고를 점유한다. 반려·취소 시 재고가 복원된다.
   상태 전환 로직을 바꿀 때는 재고 증감이 맞는지 반드시 확인한다.
 - Google Sheets 동기화는 Apps Script 웹앱 URL로 호출한다(`admin/index.html` 안). URL은 바꾸지 않는다.
-- 매장 목록 자동완성: `admin/index.html`의 `STORE_LIST` 배열.
+- 매장 목록 자동완성: `STORE_LIST` 배열(`index.html`, `admin/index.html` 양쪽에 있음).
+- `admins`, `stores` 컬렉션은 아래 '로그인·권한' 참고.
+
+## 로그인·권한 (2026-10 도입)
+
+- Firebase Auth 이메일/비밀번호 로그인. 관리자 화면과 매장 화면 모두 로그인해야 데이터가 보인다.
+- `admins` 컬렉션: 문서 ID = 관리자 이메일(소문자), 필드 `role`이 `owner`(최고관리자) 또는 `manager`(담당자).
+  - 담당자는 조회·출력·주문 처리만 가능. 상품 추가·이름/수량/사진 변경, 일괄 발주, 주문 삭제는 최고관리자만
+    (`html.role-manager` CSS로 숨기고, 함수 단계에서도 한 번 더 막는다).
+- `stores` 컬렉션: 문서 ID = 매장 공용 계정 이메일. 매장 화면은 아이디만 입력하면 `@eidosstudio.co.kr`을 붙인다.
+- 보안 규칙 원본과 테스트는 `firebase/` 폴더(기록용). 게시는 Firebase 콘솔에서 한다.
+  매장 계정은 재고 수량만 바꿀 수 있고, 외부인은 읽기·쓰기 모두 막혀 있다.
+- Google Sheets 동기화(Apps Script)는 API 키가 아니라 `ScriptApp.getOAuthToken()`(datastore 범위)으로 Firestore를 호출한다.
+
+## 디자인 (2026-10 리디자인)
+
+- 색은 CSS 변수로 관리한다: `--bg #f7f6f3`, `--surface`, `--ink #111`, `--sub`, `--muted`, `--line`, `--low #b3001b`(재고 부족),
+  `--accent #c2410c`(주요 버튼·검토중), `--ok`/`--ok-bg`(출고완료). 어두운 화면 값은 `body.dark`에 따로 있다.
+- 새 화면 요소에는 파란·보라 같은 색을 직접 쓰지 말고 위 변수를 쓴다. 모서리는 각지게(`border-radius:0`).
+- 글꼴: Roboto + 나눔고딕(Google Fonts), 일본어·중국어는 Pretendard로 대체 표시.
+- 기본은 밝은 화면, 선택한 밝기는 localStorage `gm-theme`에 저장(매장·관리자 공통). 헤더는 밝기와 상관없이 항상 검정.
+- 상품 카드의 컬렉션 색: `index.html`의 `COLL_COLORS`(구글 시트 Apps Script 색과 같은 계열).
+- PC(가로 1100px 이상) 매장 화면은 장바구니가 오른쪽에 항상 보인다.
+- 출고 지시서 인쇄 창(`printOrder`)과 사진 확대 창(`viewPhoto`)은 별도 창이라 CSS 변수를 쓰지 않는다.
 
 ## 다국어 (`index.html`)
 
@@ -55,6 +78,5 @@
 
 ## 알려진 사항
 
-- 관리자 화면(`/admin/`)에는 로그인이 없고, Firebase Auth를 쓰지 않는다. 주소를 아는 사람은 누구나 접근할 수 있다.
-  보안 개선(로그인 추가, Firestore 규칙 강화)은 사용자와 별도로 논의 중인 과제다. 임의로 손대지 않는다.
-- 서비스워커 캐시 때문에 배포 후 옛 화면이 보일 수 있다. 큰 변경 시 `sw.js`의 `CACHE_NAME` 버전 올리기를 제안한다.
+- 서비스워커 캐시 때문에 배포 후 옛 화면이 보일 수 있다. 큰 변경 시 `sw.js`의 `CACHE_NAME` 버전을 올린다(현재 `gm-stock-v2`).
+- 사용자는 2026-10-21부터 "보안상 꼭 본인이 해야 하는 것만 빼고 PR 머지까지 직접 처리"하도록 맡겼다. 단계별 PR·검증 규칙은 그대로 지킨다.
