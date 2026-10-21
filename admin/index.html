@@ -311,6 +311,12 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
 .c-qty .unit{font-weight:400;font-size:10px;color:var(--muted)}
 .lowtxt{color:var(--low)}
 .low-pill{display:inline-block;font-size:9px;font-weight:900;letter-spacing:.08em;padding:1px 5px;border:1px solid var(--low);color:var(--low);margin-left:4px}
+.restock-cell{display:flex;align-items:center;gap:4px;margin-top:3px;font-size:10px;font-weight:700}
+.restock-txt{color:var(--ink);border:1px solid var(--low);padding:1px 5px}
+.restock-empty{color:var(--muted);font-weight:400}
+.restock-btn{padding:1px 5px;font-size:10px;background:var(--bg);border:1px solid var(--line);cursor:pointer}
+.rs-opt{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:9px 0;border-top:1px solid var(--line2);font-size:13px;font-weight:700;color:var(--ink)}
+.rs-opt input[type=radio]{accent-color:var(--ink)}
 .c-act button{padding:5px 9px;font-size:11px;font-weight:700;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
 @media(max-width:600px){
   .s-table{min-width:0}
@@ -751,7 +757,7 @@ function renderStock(){
           <td class="c-name">${first?`<b>${escH(item.name)}</b> <button class="item-name-btn" data-iid="${item.id}" title="상품명 수정">✏️</button>`:""}</td>
           <td class="c-opt">${ln.name?escH(ln.name):"-"}${ln.size?`<div class="c-sub">${escH(ln.size)}</div>`:""}</td>
           <td class="c-spec">${first?escH([item.size,item.material].filter(Boolean).join(" · ")):""}</td>
-          <td class="c-qty"><span class="${lowLn?"lowtxt":""}">${ln.q.toLocaleString()}</span> <span class="unit">${escH(unit)}</span>${lowLn?' <span class="low-pill">LOW</span>':""}</td>
+          <td class="c-qty"><span class="${lowLn?"lowtxt":""}">${ln.q.toLocaleString()}</span> <span class="unit">${escH(unit)}</span>${lowLn?' <span class="low-pill">LOW</span>':""}${first?restockCell(item):""}</td>
           <td class="c-act">${ln.oi>=0?`<button class="opt-qty-btn" data-iid="${item.id}" data-oi="${ln.oi}" data-qty="${ln.q}">수량 수정</button>`:`<button class="item-qty-btn" data-iid="${item.id}" data-qty="${ln.q}">수량 수정</button>`}</td>
         </tr>`;
       }).join("");
@@ -768,6 +774,55 @@ function renderStock(){
     </div>`;
   }}).join("");
 }
+
+// ── 입고 안내 (재고 부족 상품에 매장 화면 LOW 옆으로 표시) ──
+// items 문서의 restock 칸: {type:"date", date:"YYYY-MM-DD"} / {type:"none"} / {type:"text", text:"..."} / 없음
+function restockText(r){
+  if(!r||!r.type) return "";
+  if(r.type==="date"&&r.date){ const m=String(r.date).match(/^(\d{4})-(\d{2})-(\d{2})$/); return (m?`${+m[2]}/${+m[3]}`:r.date)+" 입고 예정"; }
+  if(r.type==="none") return "입고 예정 없음";
+  if(r.type==="text") return String(r.text||"");
+  return "";
+}
+function restockCell(item){
+  const txt=restockText(item.restock);
+  return `<div class="restock-cell">${txt?`<span class="restock-txt">${escH(txt)}</span>`:`<span class="restock-empty">입고 안내 없음</span>`}<button type="button" class="restock-btn owner-only" data-iid="${item.id}" title="입고 안내 수정">✏️</button></div>`;
+}
+window.openRestockModal=itemId=>{
+  const item=items.find(i=>i.id===itemId); if(!item) return;
+  const r=item.restock||{};
+  const type=r.type||"off";
+  document.getElementById("restock-modal")?.remove();
+  const modal=document.createElement("div");modal.className="modal-bg";modal.id="restock-modal";
+  const opt=(v,label,extra="")=>`<label class="rs-opt"><input type="radio" name="rs-type" value="${v}" ${type===v?"checked":""}> ${label}${extra}</label>`;
+  modal.innerHTML=`<div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">입고 안내 · ${escH(item.name)}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">재고가 부족한 상품의 매장 화면 LOW 표시 옆에 보여요. 입고 예정일·입고 예정 없음은 매장 언어로 자동 번역되고, 직접 입력한 글은 그대로 보여요.</div>
+    ${opt("off","표시 안 함")}
+    ${opt("date","입고 예정일",` <input type="date" id="rs-date" class="field-input" style="width:auto;padding:6px 8px;font-size:13px;margin-left:6px" value="${escAttr(r.date||"")}">`)}
+    ${opt("none","입고 예정 없음")}
+    ${opt("text","직접 입력",` <input type="text" id="rs-text" class="field-input" maxlength="30" placeholder="예: 11월 중순 입고" style="padding:6px 8px;font-size:13px;margin-top:6px" value="${escAttr(r.text||"")}">`)}
+    <button class="btn-primary" style="margin-top:12px" onclick="window.saveRestock('${item.id}')">저장</button>
+    <button class="btn-secondary-sm" onclick="document.getElementById('restock-modal').remove()">취소</button>
+  </div>`;
+  modal.addEventListener("click",e=>{ if(e.target===modal) modal.remove(); });
+  modal.querySelectorAll("#rs-date,#rs-text").forEach(inp=>inp.addEventListener("focus",()=>{ const v=inp.id==="rs-date"?"date":"text"; modal.querySelector(`input[name=rs-type][value=${v}]`).checked=true; }));
+  document.body.appendChild(modal);
+};
+window.saveRestock=async itemId=>{
+  const type=document.querySelector("input[name=rs-type]:checked")?.value||"off";
+  let restock=null;
+  if(type==="date"){ const d=document.getElementById("rs-date").value; if(!d){ showToast("입고 예정일을 골라 주세요","var(--low)"); return; } restock={type:"date",date:d}; }
+  else if(type==="none") restock={type:"none"};
+  else if(type==="text"){ const tx=document.getElementById("rs-text").value.trim(); if(!tx){ showToast("안내 문구를 입력해 주세요","var(--low)"); return; } restock={type:"text",text:tx}; }
+  try{
+    await setDoc(doc(collection(db,"items"),itemId),{restock},{merge:true});
+    document.getElementById("restock-modal")?.remove();
+    showToast("입고 안내를 저장했어요");
+  }catch(e){ showToast("저장하지 못했어요: "+(e.code||e.message),"var(--low)"); }
+};
+document.addEventListener("click",e=>{ const b=e.target.closest(".restock-btn"); if(b) window.openRestockModal(b.dataset.iid); });
 
 // ── 상품명 수정 모달 ──
 window.openItemNameModal=(itemId,currentName)=>{
@@ -2198,7 +2253,7 @@ document.addEventListener("click",async e=>{
 // 담당자(manager)는 재고·프로그램 관리 기능을 쓸 수 없다. 버튼이 숨겨져 있어도 함수 단계에서 한 번 더 막는다.
 // (출고요청 승인·반려·상태 변경·취소·매장명 수정, 조회, 쉬핑 리스트·인쇄는 담당자도 가능)
 ["openAddItemModal","confirmAddItem","openItemNameModal","confirmItemName","openQtyModal","confirmQtyModal",
- "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto","openAccountModal"].forEach(name=>{
+ "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto","openAccountModal","openRestockModal","saveRestock"].forEach(name=>{
   const original=window[name];
   if(typeof original!=="function") return;
   window[name]=function(...args){
