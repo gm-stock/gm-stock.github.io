@@ -96,16 +96,21 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // ── 매장 계정 명단: 본인 문서만 읽기, 수정은 Firebase 콘솔에서만 ──
+    // ── 매장 계정 명단: 본인 문서만 읽기 ──
+    // 최고관리자는 관리자 화면 '계정 관리'에서 명단 보기·추가·삭제(아이디 교체)를 할 수 있다.
     match /stores/{email} {
-      allow get: if myEmail() != "" && myEmail() == email;
-      allow list, write: if false;
+      allow get: if (myEmail() != "" && myEmail() == email) || isOwner();
+      allow list: if isOwner();
+      allow create: if isOwner() && email == email.lower();
+      allow delete: if isOwner();
+      allow update: if false;
     }
 
-    // ── 관리자 명단: 본인 문서만 읽기, 수정은 Firebase 콘솔에서만 ──
+    // ── 관리자 명단: 본인 문서만 읽기, 최고관리자는 명단 보기만 (수정은 Firebase 콘솔에서만) ──
     match /admins/{email} {
-      allow get: if myEmail() != "" && myEmail() == email;
-      allow list, write: if false;
+      allow get: if (myEmail() != "" && myEmail() == email) || isOwner();
+      allow list: if isOwner();
+      allow write: if false;
     }
 
     // 그 밖의 모든 경로는 차단

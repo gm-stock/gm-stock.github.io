@@ -266,6 +266,7 @@ body.light #loading,body.dark #loading,body.light #login-screen,body.dark #login
 .login-langs button,body.light .login-langs button{border-radius:0;border-color:var(--line);color:var(--sub)}
 .login-langs button.on{border-color:var(--ink);color:var(--ink);background:var(--surface)}
 .status-dropdown{background:var(--surface)!important;border:1px solid var(--ink)!important}
+.logout-btn{white-space:nowrap}
 .dd-item:hover{background:var(--hover)}
 </style>
 </head>
@@ -297,6 +298,7 @@ body.light #loading,body.dark #loading,body.light #login-screen,body.dark #login
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
+    <button class="logout-btn owner-only" type="button" onclick="window.openAccountModal()" title="매장·관리자 계정 관리">계정</button>
     <button class="logout-btn" id="logout-btn" type="button" title="">로그아웃</button>
     <button class="theme-toggle" onclick="toggleTheme()"><div class="theme-knob" id="theme-knob">☀️</div></button>
   </div>
@@ -372,8 +374,8 @@ body.light #loading,body.dark #loading,body.light #login-screen,body.dark #login
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getFirestore,collection,doc,getDoc,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail,initializeAuth,inMemoryPersistence,createUserWithEmailAndPassword,updatePassword}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const app=initializeApp({
   apiKey:"AIzaSyBHWNK9K1Ack5-Sj02PAuVbCu2gcOSnpMY",
@@ -1965,11 +1967,124 @@ document.addEventListener("click", e=>{
   document.querySelectorAll(".status-dropdown").forEach(dd=>{ dd.style.display="none"; });
 });
 
+
+// ── 계정 관리 (최고관리자 전용) ──
+// 매장 공용 계정: 비밀번호 변경(현재 비밀번호 필요), 아이디 변경(새 계정을 만들고 예전 아이디는 명단에서 빼서 로그인 불가로)
+// 관리자·담당자: 비밀번호 재설정 메일 보내기
+// 다른 계정으로 로그인해야 하는 작업은 화면 로그인에 영향이 없도록 별도의 임시 로그인(메모리 전용)으로 처리한다.
+const STORE_ID_DOMAIN="eidosstudio.co.kr";
+const toolAuth=initializeAuth(initializeApp(app.options,"account-tool"),{persistence:inMemoryPersistence});
+function acctIdToEmail(v){ v=String(v||"").trim().toLowerCase(); return v.includes("@")?v:(v+"@"+STORE_ID_DOMAIN); }
+function acctErr(code){
+  if(["auth/invalid-credential","auth/wrong-password","auth/user-not-found","auth/invalid-login-credentials"].includes(code)) return "현재 비밀번호가 맞지 않아요. 기억나지 않으면 '아이디 변경'으로 새 계정을 만들어 주세요.";
+  if(code==="auth/email-already-in-use") return "이미 있는 아이디예요. 다른 아이디를 입력해 주세요.";
+  if(code==="auth/invalid-email") return "아이디 형식이 올바르지 않아요. 영문·숫자·점(.)으로 입력해 주세요.";
+  if(code==="auth/weak-password") return "비밀번호가 너무 쉬워요. 6자 이상으로 정해 주세요.";
+  if(code==="auth/too-many-requests") return "시도가 너무 많아요. 잠시 후 다시 해 주세요.";
+  if(code==="permission-denied") return "권한이 없어요. 최고관리자 계정으로 로그인했는지 확인해 주세요.";
+  return "처리하지 못했어요. ("+code+")";
+}
+window.openAccountModal=async()=>{
+  document.getElementById("acct-modal")?.remove();
+  const modal=document.createElement("div");
+  modal.className="modal-bg"; modal.id="acct-modal";
+  modal.innerHTML=`<div class="modal-sheet" style="max-height:90dvh;overflow-y:auto;max-width:520px">
+    <div class="modal-handle"></div>
+    <div class="modal-title">계정 관리</div>
+    <div id="acct-body" style="font-size:13px;color:var(--muted)">불러오는 중...</div>
+    <button class="btn-secondary-sm" onclick="document.getElementById('acct-modal').remove()">닫기</button>
+  </div>`;
+  modal.addEventListener("click",e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  await renderAccountBody();
+};
+async function renderAccountBody(){
+  const body=document.getElementById("acct-body"); if(!body) return;
+  try{
+    const [st,ad]=await Promise.all([getDocs(collection(db,"stores")),getDocs(collection(db,"admins"))]);
+    const stores=st.docs.map(d=>({email:d.id,name:(d.data()||{}).name||""}));
+    const admins=ad.docs.map(d=>({email:d.id,role:(d.data()||{}).role||""}));
+    const row=(left,right)=>`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line2)">${left}<div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${right}</div></div>`;
+    const btn=(label,act,email)=>`<button type="button" data-acct="${act}" data-email="${escAttr(email)}" style="padding:6px 10px;font-size:12px;font-weight:700;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap">${label}</button>`;
+    body.innerHTML=`
+      <div style="font-weight:900;color:var(--ink);letter-spacing:.04em;margin:4px 0 2px">매장 공용 계정</div>
+      <div style="font-size:11px;margin-bottom:4px">매장 화면 로그인에 쓰는 계정이에요.</div>
+      ${stores.length?stores.map(s=>row(`<div><div style="font-weight:700;color:var(--ink)">${escH(s.name||"(이름 없음)")}</div><div style="font-size:11px">${escH(s.email)}</div></div>`,btn("비밀번호 변경","pw",s.email)+btn("아이디 변경","id",s.email))+`<div id="acct-form-${escAttr(s.email)}"></div>`).join(""):`<div style="padding:10px 0">등록된 매장 계정이 없어요.</div>`}
+      <div style="font-weight:900;color:var(--ink);letter-spacing:.04em;margin:18px 0 2px">관리자·담당자</div>
+      <div style="font-size:11px;margin-bottom:4px">비밀번호를 잊은 경우 재설정 메일을 보내 주세요. 받은 메일의 링크에서 본인이 새 비밀번호를 정해요.</div>
+      ${admins.map(a=>row(`<div><div style="font-weight:700;color:var(--ink)">${escH(a.email)}</div><div style="font-size:11px">${a.role==="owner"?"최고관리자":"담당자"}</div></div>`,btn("재설정 메일 보내기","reset",a.email))).join("")}
+      <div id="acct-msg" style="margin-top:12px;font-size:12px;line-height:1.6"></div>`;
+  }catch(e){ body.innerHTML=`<div style="color:var(--low)">${escH(acctErr(e.code))}</div>`; }
+}
+function acctMsg(text,ok){ const m=document.getElementById("acct-msg"); if(m){ m.style.color=ok?"var(--ok)":"var(--low)"; m.textContent=text; } }
+function acctFormHTML(kind,email){
+  const inp=(id,ph,type="password")=>`<input class="field-input" id="${id}" type="${type}" placeholder="${ph}" autocomplete="new-password" style="margin-bottom:6px;font-size:13px;padding:8px 10px">`;
+  const box=inner=>`<div style="padding:10px;margin-bottom:6px;border:1px solid var(--line);background:var(--bg)">${inner}</div>`;
+  if(kind==="pw") return box(`<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">${escH(email)} 비밀번호 변경</div>
+    ${inp("acct-cur","현재 비밀번호")}${inp("acct-new","새 비밀번호 (6자 이상)")}${inp("acct-new2","새 비밀번호 다시 입력")}
+    <button type="button" class="btn-primary" style="padding:10px;font-size:13px;margin-top:2px" data-acct="pw-go" data-email="${escAttr(email)}">비밀번호 바꾸기</button>
+    <div style="font-size:11px;margin-top:6px">바꾸면 매장 기기들에서 새 비밀번호로 다시 로그인해야 해요.</div>`);
+  return box(`<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px">${escH(email)} → 새 아이디로 교체</div>
+    ${inp("acct-newid","새 아이디 (예: gentlemonster.stock)","text")}${inp("acct-new","새 비밀번호 (6자 이상)")}${inp("acct-new2","새 비밀번호 다시 입력")}
+    <button type="button" class="btn-primary" style="padding:10px;font-size:13px;margin-top:2px" data-acct="id-go" data-email="${escAttr(email)}">새 아이디로 교체하기</button>
+    <div style="font-size:11px;margin-top:6px">아이디만 입력하면 뒤에 @${STORE_ID_DOMAIN}가 붙어요. 교체하면 예전 아이디(${escH(email)})는 바로 로그인할 수 없게 돼요.</div>`);
+}
+function readNewPw(){
+  const a=document.getElementById("acct-new").value, b=document.getElementById("acct-new2").value;
+  if(a.length<6){ acctMsg("새 비밀번호는 6자 이상이어야 해요."); return null; }
+  if(a!==b){ acctMsg("새 비밀번호 두 칸이 서로 달라요."); return null; }
+  return a;
+}
+async function acctChangePw(email,btnEl){
+  const cur=document.getElementById("acct-cur").value; const pw=readNewPw(); if(!pw) return;
+  if(!cur){ acctMsg("현재 비밀번호를 입력해 주세요."); return; }
+  btnEl.disabled=true; btnEl.textContent="바꾸는 중...";
+  try{
+    const cred=await signInWithEmailAndPassword(toolAuth,email,cur);
+    await updatePassword(cred.user,pw);
+    acctMsg(`${email} 비밀번호를 바꿨어요. 매장 기기에서 새 비밀번호로 다시 로그인해 주세요.`,true);
+    document.getElementById("acct-form-"+email).innerHTML="";
+  }catch(e){ acctMsg(acctErr(e.code)); btnEl.disabled=false; btnEl.textContent="비밀번호 바꾸기"; }
+  finally{ try{ await signOut(toolAuth); }catch(e){} }
+}
+async function acctChangeId(oldEmail,btnEl){
+  const newEmail=acctIdToEmail(document.getElementById("acct-newid").value); const pw=readNewPw(); if(!pw) return;
+  if(!document.getElementById("acct-newid").value.trim()){ acctMsg("새 아이디를 입력해 주세요."); return; }
+  if(newEmail===oldEmail){ acctMsg("지금 아이디와 같아요. 비밀번호만 바꾸려면 '비밀번호 변경'을 써 주세요."); return; }
+  if(!confirm(`새 아이디 ${newEmail} 로 교체할까요?\n예전 아이디 ${oldEmail} 는 바로 로그인할 수 없게 돼요.`)) return;
+  btnEl.disabled=true; btnEl.textContent="교체하는 중...";
+  try{
+    const old=await getDoc(doc(db,"stores",oldEmail));
+    await createUserWithEmailAndPassword(toolAuth,newEmail,pw);
+    await setDoc(doc(db,"stores",newEmail),{name:(old.data()||{}).name||"매장 공용",createdAt:serverTimestamp(),replaces:oldEmail});
+    await deleteDoc(doc(db,"stores",oldEmail));
+    await renderAccountBody();
+    acctMsg(`새 아이디 ${newEmail} 로 교체했어요. 매장 기기에서 새 아이디·비밀번호로 다시 로그인해 주세요.`,true);
+  }catch(e){ acctMsg(acctErr(e.code)); btnEl.disabled=false; btnEl.textContent="새 아이디로 교체하기"; }
+  finally{ try{ await signOut(toolAuth); }catch(e){} }
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-acct]"); if(!b) return;
+  if(userRole!=="owner"){ showToast("이 기능은 최고관리자만 사용할 수 있어요","var(--low)"); return; }
+  const email=b.dataset.email, act=b.dataset.acct;
+  if(act==="pw"||act==="id"){
+    document.querySelectorAll('[id^="acct-form-"]').forEach(el=>el.innerHTML="");
+    const f=document.getElementById("acct-form-"+email); if(f) f.innerHTML=acctFormHTML(act,email);
+    acctMsg(""); return;
+  }
+  if(act==="pw-go") return acctChangePw(email,b);
+  if(act==="id-go") return acctChangeId(email,b);
+  if(act==="reset"){
+    try{ await sendPasswordResetEmail(auth,email); acctMsg(`${email} 로 비밀번호 재설정 메일을 보냈어요. 받은편지함에 없으면 스팸함을 확인하도록 알려 주세요.`,true); }
+    catch(err){ acctMsg(acctErr(err.code)); }
+  }
+});
+
 // ── 역할별 기능 제한 ──
 // 담당자(manager)는 재고·프로그램 관리 기능을 쓸 수 없다. 버튼이 숨겨져 있어도 함수 단계에서 한 번 더 막는다.
 // (출고요청 승인·반려·상태 변경·취소·매장명 수정, 조회, 쉬핑 리스트·인쇄는 담당자도 가능)
 ["openAddItemModal","confirmAddItem","openItemNameModal","confirmItemName","openQtyModal","confirmQtyModal",
- "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto"].forEach(name=>{
+ "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto","openAccountModal"].forEach(name=>{
   const original=window[name];
   if(typeof original!=="function") return;
   window[name]=function(...args){
