@@ -263,6 +263,19 @@ body.light #loading,body.dark #loading,body.light #login-screen,body.dark #login
 .login-err{color:var(--low)}
 .login-langs button,body.light .login-langs button{border-radius:0;border-color:var(--line);color:var(--sub)}
 .login-langs button.on{border-color:var(--ink);color:var(--ink);background:var(--surface)}
+/* ══ 리디자인 3단계: 상품 카드 ══ */
+.coll-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--dot);flex-shrink:0}
+body.light .item-card .item-img.tinted{background:var(--tint)}
+body.dark .item-card .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--surface))}
+.item-img .ph-name{font-size:12px;font-weight:900;letter-spacing:.08em;color:var(--dot);text-align:center;padding:10px;line-height:1.2}
+.stock-tag{position:absolute;top:0;left:0;z-index:1;font-size:10px;font-weight:900;letter-spacing:.1em;padding:3px 6px}
+.stock-tag.low{background:var(--low);color:#fff}
+.stock-tag.out{background:var(--ink);color:var(--bg)}
+.item-coll{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--sub)}
+.item-coll .coll-dot{width:7px;height:7px}
+.stock-meter{height:3px;background:var(--line2);margin-top:4px}
+.stock-meter i{display:block;height:100%;background:var(--ink)}
+.stock-meter.low i{background:var(--low)}
 </style>
 </head>
 <body class="light">
@@ -1258,6 +1271,13 @@ window.confirmOrder=async(skipLateCheck=false)=>{
 };
 
 // ── 렌더 재고 ──
+// 컬렉션 색 (구글 시트 Apps Script의 COLL_COLORS와 같은 계열). 목록에 없는 컬렉션은 회색.
+const COLL_COLORS={
+  "MM2":["#fff8e1","#c99a1e"],"MM":["#fff8e1","#b08a2a"],"VEGGIE":["#e8f5e9","#4f8f5a"],"PRADA":["#fff3e0","#d9822b"],
+  "BOLD":["#e3f2fd","#3d7cc9"],"BOUQUET":["#fce4ec","#c95b85"],"JEWELRY":["#e8eaf6","#5a63b8"],
+  "POCKET X BRATZ":["#f3e5f5","#9c4fb0"],"FALL SEASON":["#fbe9e7","#c4633f"],"CIRCUIT X DISNEY":["#e0f7fa","#2a9aa8"]
+};
+function collVars(c){const k=COLL_COLORS[String(c||"").trim().toUpperCase()]||["#efede8","#8a8780"];return `--tint:${k[0]};--dot:${k[1]}`;}
 function renderStock(){
   const total=items.reduce((a,i)=>a+totalQty(i),0);
   const low=items.filter(isLow);
@@ -1276,9 +1296,9 @@ function renderStock(){
   const ac=colls.includes(filterColl)?filterColl:"전체";
 
   document.getElementById("stock-stats").innerHTML=[
-    {l:t("stat_items"),v:nu(items.length,"unit_type"),c:"#3b82f6"},
-    {l:t("stat_qty"),v:total.toLocaleString(),c:"#8b5cf6"},
-    {l:t("stat_low"),v:nu(low.length,"unit_type"),c:low.length>0?"#ef4444":"#6b7280",click:true},
+    {l:t("stat_items"),v:nu(items.length,"unit_type"),c:"var(--ink)"},
+    {l:t("stat_qty"),v:total.toLocaleString(),c:"var(--ink)"},
+    {l:t("stat_low"),v:nu(low.length,"unit_type"),c:low.length>0?"var(--low)":"var(--muted)",click:true},
   ].map(s=>`<div class="stat-tile" style="cursor:${s.click?"pointer":"default"}" ${s.click?'onclick="window.toggleLowOnly()"':""}>
     <div class="stat-val" style="color:${s.c}">${s.v}</div>
     <div class="stat-lbl">${s.l}${s.click&&showLowOnly?" ✓":""}</div></div>`).join("");
@@ -1323,33 +1343,35 @@ function renderStock(){
       const optRows=hasOpts?item.options.map(o=>{
         const oLow=(o.quantity||0)<10;
         return`<div class="opt-row">
-          <span class="opt-name">${tOpt(o.name)}${o.size?`<span style="display:block;font-size:9px;color:#6366f1;opacity:.8">${o.size}</span>`:""}
+          <span class="opt-name">${tOpt(o.name)}${o.size?`<span style="display:block;font-size:9px;color:var(--muted)">${o.size}</span>`:""}
           </span>
-          ${oLow?`<span style="font-size:9px;flex-shrink:0">🔴</span>`:""}
-          <span class="opt-qty" style="color:${oLow?"#ef4444":(isDark?"#e2e8f0":"#111827")};flex-shrink:0">${o.quantity||0}<span class="unit"> ${item.unit==="개"?t("unit_pcs"):(item.unit||t("unit_pcs"))}</span></span>
+          <span class="opt-qty" style="color:${oLow?"var(--low)":"var(--ink)"};flex-shrink:0">${o.quantity||0}<span class="unit"> ${item.unit==="개"?t("unit_pcs"):(item.unit||t("unit_pcs"))}</span></span>
         </div>`;
       }).join(""):"";
-      return`<div class="item-card${low?" low-stock":""}">
-        <div class="item-img">
-          ${item.imageUrl?`<img src="${item.imageUrl}" alt="${item.name}">`:`<span style="opacity:.15">📷</span>`}
-          ${low?`<div class="low-mask"></div>`:""}
+      const meterPct=Math.min(100,Math.round(qty/((hasOpts?item.options.length:1)*100)*100));
+      return`<div class="item-card${low?" low-stock":""}" style="${collVars(item.collection)}">
+        <div class="item-img tinted">
+          ${qty<=0?`<span class="stock-tag out">SOLD OUT</span>`:low?`<span class="stock-tag low">LOW</span>`:""}
+          ${item.imageUrl?`<img src="${item.imageUrl}" alt="${item.name}">`:`<span class="ph-name">${item.name}</span>`}
         </div>
         <div class="item-body">
+          ${item.collection?`<div class="item-coll"><span class="coll-dot"></span>${item.collection}${item.year?` · ${item.year}`:""}</div>`:""}
           <div class="item-name">${item.name}</div>
           ${item.material?`<div class="item-sub">${item.material}</div>`:""}
-          ${item.size?`<div class="item-sub" style="color:#6366f1;opacity:.85">${item.size}</div>`:""}
-          <div class="item-qty" style="color:${low?"#ef4444":(isDark?"#e2e8f0":"#111827")}">${qty}<span class="unit"> ${item.unit==="개"?t("unit_pcs"):(item.unit||t("unit_pcs"))}</span></div>
+          ${item.size?`<div class="item-sub">${item.size}</div>`:""}
+          <div class="item-qty" style="color:${low?"var(--low)":"var(--ink)"}">${qty}<span class="unit"> ${item.unit==="개"?t("unit_pcs"):(item.unit||t("unit_pcs"))}</span></div>
+          <div class="stock-meter${low?" low":""}"><i style="width:${meterPct}%"></i></div>
         </div>
-        ${hasOpts?`<div class="opts-panel">${optRows}<button class="btn-cart" onclick="openCartModal('${item.id}')">🛒 ${t("btn_add")}</button></div>`
-        :`<div class="card-actions"><button class="btn-cart" onclick="openCartModal('${item.id}')">🛒 ${t("btn_add")}</button></div>`}
+        ${hasOpts?`<div class="opts-panel">${optRows}<button class="btn-cart" onclick="openCartModal('${item.id}')">${t("btn_add")}</button></div>`
+        :`<div class="card-actions"><button class="btn-cart" onclick="openCartModal('${item.id}')">${t("btn_add")}</button></div>`}
       </div>`;
     }).join("");
     return`<div class="collection-group">
-      <div class="coll-header${isCol?" collapsed":""}" onclick="window.toggleGroup('${sGk}')">
-        <span>${isCol?"📁":"🗂️"}</span>
-        <span style="color:${isDark?"#a5b4fc":"#4f46e5"}">${gk}</span>
-        <span style="margin-left:auto;font-size:10px;color:#6366f1">${nu(gitems.length,"unit_type")} · ${nu(gTotal.toLocaleString(),"unit_pcs")}</span>
-        <span style="font-size:11px;color:${isDark?"#475569":"#9ca3af"}">${isCol?"▶":"▼"}</span>
+      <div class="coll-header${isCol?" collapsed":""}" onclick="window.toggleGroup('${sGk}')" style="${collVars(gitems[0]&&gitems[0].collection)}">
+        <span class="coll-dot"></span>
+        <span style="color:var(--ink);font-weight:900">${gk}</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--muted)">${nu(gitems.length,"unit_type")} · ${nu(gTotal.toLocaleString(),"unit_pcs")}</span>
+        <span style="font-size:11px;color:var(--muted)">${isCol?"▶":"▼"}</span>
       </div>
       ${!isCol?`<div class="items-wrap"><div class="item-grid">${cards}</div></div>`:""}
     </div>`;
