@@ -1,5 +1,5 @@
 // Service Worker - 항상 최신 버전 유지
-const CACHE_NAME = 'gm-stock-v3';
+const CACHE_NAME = 'gm-stock-v4';
 
 // 설치 시 캐시 없이 네트워크 우선
 self.addEventListener('install', event => {

@@ -83,6 +83,36 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    // ── 시즌 배송 내역 (관리자 '시즌 배송' 탭에서 엑셀로 등록) ──
+    // 매장 화면은 이걸 읽어서 매장별 배송 품목·수량·접수 기한을 보여준다.
+    match /shipments/{shipmentId} {
+      allow read: if isStaff();
+      allow write: if isOwner();
+    }
+
+    // ── 배송 이슈 접수 (파손·불량·누락) ──
+    // 매장 계정: 접수가 열린 시즌에 '검토중'으로만 만들 수 있고, 만든 뒤에는 고칠 수 없다.
+    // 담당자·최고관리자: 처리 상태 변경(재발송 예정 등). 삭제는 최고관리자만.
+    match /claims/{claimId} {
+      allow read: if isStaff();
+      allow create: if isOwner() || (isStaff() && validNewClaim());
+      allow update: if isAdmin();
+      allow delete: if isOwner();
+    }
+    function validNewClaim() {
+      let d = request.resource.data;
+      let ship = /databases/$(database)/documents/shipments/$(d.get("shipmentId", "-"));
+      return d.keys().hasOnly(["shipmentId", "storeName", "itemId", "itemName", "optName", "collection",
+                               "type", "reason", "qty", "shipped", "photos", "reporter", "status",
+                               "date", "createdAt"])
+        && d.get("status", "") == "검토중"
+        && d.get("type", "") in ["파손", "불량", "누락"]
+        && d.get("qty", 0) is int && d.qty >= 1
+        && d.get("shipped", 0) is int && d.qty <= d.shipped
+        && d.get("photos", []) is list && d.get("photos", []).size() <= 3
+        && exists(ship) && get(ship).data.get("open", false) == true;
+    }
+
     // ── 재고 변동 기록 (최고관리자의 수량 수정 시 기록) ──
     match /stockLogs/{logId} {
       allow read: if isAdmin();

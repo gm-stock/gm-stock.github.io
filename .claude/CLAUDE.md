@@ -26,6 +26,8 @@
 | `items` | 재고 품목(이름, 이미지 URL, 수량 등) |
 | `orders` | 매장 출고 요청. `storeName`, `items`, `status`, `handledAt`, `rejectReason`, `cancelReason`, `canceledAt` |
 | `stockLogs` | 재고 변동 기록(관리자 화면에서 기록) |
+| `shipments` | 시즌 배송 내역. `title`, `openDate`, `open`(접수 열림), `stores`{매장명: [{itemId, itemName, optName, collection, qty}]} |
+| `claims` | 배송 이슈 접수. `shipmentId`, `storeName`, `itemId`, `itemName`, `optName`, `type`(파손·불량·누락), `reason`, `qty`, `shipped`, `photos`, `reporter`, `status` |
 
 - 주문 상태 값은 한국어 문자열이다: `검토중`, `승인`, `준비중`, `출고대기`, `출고완료`, `반려`, `취소`.
   영어로 바꾸지 않는다(기존 데이터와 깨짐).
@@ -34,6 +36,11 @@
 - Google Sheets 동기화는 Apps Script 웹앱 URL로 호출한다(`admin/index.html` 안). URL은 바꾸지 않는다.
 - 매장 목록 자동완성: `STORE_LIST` 배열(`index.html`, `admin/index.html` 양쪽에 있음).
 - `admins`, `stores` 컬렉션은 아래 '로그인·권한' 참고.
+- 배송 이슈 상태 값(한국어): `검토중`, `재발송 예정`, `재발송 완료`, `반려`. `재발송 예정`으로 바뀔 때 재고 차감,
+  재발송 예정·완료 → 검토중·반려로 되돌리면 복원. 접수 기한 = 오픈일 + 7일(그날 밤 12시, 한국 시간).
+  같은 매장·품목의 접수 합계(반려 제외)는 배송 수량을 넘을 수 없다.
+- 매장 화면 '배송 이슈' 탭은 접수가 열린(`open:true`) 시즌이 있을 때만 눌린다. 시즌 등록은 관리자 '시즌 배송' 탭(최고관리자).
+- 시즌 배송·배송 이슈의 구글 시트 기록: `apps-script/season_claims_sync.gs`(출고 내역 시트에 붙인 추가 파일, 5분마다 갱신).
 
 ## 로그인·권한 (2026-10 도입)
 
@@ -80,5 +87,5 @@
 
 ## 알려진 사항
 
-- 서비스워커 캐시 때문에 배포 후 옛 화면이 보일 수 있다. 큰 변경 시 `sw.js`의 `CACHE_NAME` 버전을 올린다(현재 `gm-stock-v3`).
+- 서비스워커 캐시 때문에 배포 후 옛 화면이 보일 수 있다. 큰 변경 시 `sw.js`의 `CACHE_NAME` 버전을 올린다(현재 `gm-stock-v4`).
 - 사용자는 2026-10-21부터 "보안상 꼭 본인이 해야 하는 것만 빼고 PR 머지까지 직접 처리"하도록 맡겼다. 단계별 PR·검증 규칙은 그대로 지킨다.

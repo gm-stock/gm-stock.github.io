@@ -348,6 +348,31 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
   .o-date>div{text-align:left!important}
 }
 @media(max-width:700px){.adm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* ══ 시즌 배송 · 배송 이슈 집계 ══ */
+.ssn-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.ssn-bar select{flex:1 1 220px;min-width:0;margin:0}
+.ssn-add{padding:10px 14px;font-weight:900;font-size:13px;letter-spacing:.04em;background:var(--ink);color:var(--bg);border:0;cursor:pointer;white-space:nowrap}
+.ssn-card{background:var(--surface);border:1px solid var(--line);padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:12px;color:var(--sub)}
+.ssn-card b{color:var(--ink);font-weight:800}
+.ssn-card .ssn-title{font-size:15px;font-weight:900;color:var(--ink);letter-spacing:.03em;flex-basis:100%}
+.ssn-pill{display:inline-block;font-size:10px;font-weight:900;letter-spacing:.08em;padding:2px 7px;border:1px solid var(--line);color:var(--muted)}
+.ssn-pill.open{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+.ssn-acts{display:flex;gap:6px;margin-left:auto}
+.ssn-acts button,.ssn-mini{padding:5px 9px;font-size:11px;font-weight:700;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.ssn-acts button.danger{border-color:var(--low);color:var(--low)}
+.ssn-empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7;border:1px dashed var(--line)}
+.ssn-sec{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--sub);margin:16px 0 6px}
+.ssn-err{color:var(--low);font-size:12px;line-height:1.6}
+.s-table tr.dim td{opacity:.55}
+.ssn-map{border:1px solid var(--line);background:var(--bg);padding:10px;margin-bottom:8px}
+.ssn-map-h{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:13px;color:var(--ink);margin-bottom:6px}
+.ssn-map-h span{font-weight:400;color:var(--muted);font-size:11px}
+.ssn-line{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.ssn-line select,.ssn-line input{padding:7px 8px;font-size:12px;font-family:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:0;min-width:0}
+.ssn-line .s-item{flex:2 1 150px}.ssn-line .s-opt{flex:1 1 110px}.ssn-line .s-mul{width:56px}
+.ssn-store{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line2);font-size:12px;flex-wrap:wrap}
+.ssn-store>span{flex:1 1 140px;min-width:0;font-weight:700;color:var(--ink)}
+.ssn-store select{flex:1 1 160px;min-width:0;padding:7px 8px;font-size:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:0}
 @media(max-width:600px){
   .brand-title{font-size:14px;letter-spacing:.1em}
   .brand-sub #header-sub{display:none}
@@ -398,6 +423,7 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
   <button type="button" id="top-orders" class="on" onclick="switchTab('orders')">주문 관리</button>
   <button type="button" id="top-stock" onclick="switchTab('stock')">재고 관리</button>
   <button type="button" id="top-batch" class="owner-only" onclick="switchTab('batch')">일괄 발주</button>
+  <button type="button" id="top-season" onclick="switchTab('season')">시즌 배송</button>
 </div>
 <div id="app-body">
   <div id="tab-stock" class="tab-pane"><div class="page-scroll">
@@ -460,12 +486,24 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
     <div id="orders-list"></div>
     <div style="height:80px"></div>
   </div></div>
+
+  <!-- 시즌 배송: 시즌별 매장 배송 내역 등록 + 배송 이슈(파손·불량·누락) 집계 -->
+  <div id="tab-season" class="tab-pane"><div class="page-scroll">
+    <div class="ssn-bar">
+      <select id="ssn-select" class="field-input" onchange="window.selectShipment(this.value)" aria-label="시즌 선택"></select>
+      <button type="button" class="ssn-add owner-only" onclick="window.openShipmentRegister()">＋ 새 시즌 등록</button>
+    </div>
+    <div id="ssn-info"></div>
+    <div id="ssn-claims-area"></div>
+    <div style="height:80px"></div>
+  </div></div>
 </div>
 
 <div id="bottom-nav">
   <button class="nav-btn" id="nav-stock" onclick="switchTab('stock')"><span class="nav-icon">📦</span>재고</button>
   <button class="nav-btn" id="nav-batch" onclick="switchTab('batch')"><span class="nav-icon">📂</span>일괄 발주</button>
   <button class="nav-btn active" id="nav-orders" onclick="switchTab('orders')"><span class="nav-icon">📋</span>출고요청</button>
+  <button class="nav-btn" id="nav-season" onclick="switchTab('season')"><span class="nav-icon">🚚</span>시즌 배송</button>
 </div>
 
 <script type="module">
@@ -535,14 +573,15 @@ window.toggleTheme=()=>{
 };
 
 window.switchTab=t=>{
-  ["stock","batch","orders"].forEach(id=>{
+  ["stock","batch","orders","season"].forEach(id=>{
     document.getElementById("tab-"+id).classList.remove("active");
     document.getElementById("nav-"+id).classList.remove("active");
   });
   document.getElementById("tab-"+t).classList.add("active");
   document.getElementById("nav-"+t).classList.add("active");
-  ["stock","batch","orders"].forEach(id=>document.getElementById("top-"+id)?.classList.toggle("on",id===t));
+  ["stock","batch","orders","season"].forEach(id=>document.getElementById("top-"+id)?.classList.toggle("on",id===t));
   if(t==="orders")renderOrders();
+  if(t==="season")renderSeason();
 
 };
 
@@ -566,6 +605,15 @@ function startData(){
     orders=snap.docs.map(d=>({...d.data(),id:d.id}));
     renderOrders();
   },err=>{console.error(err);showToast("출고요청을 불러오지 못했어요: "+err.message,"var(--low)");}));
+  // 시즌 배송 · 배송 이슈 (보안 규칙 게시 전에는 읽기가 막혀 있으므로 화면 알림 없이 기록만 남긴다)
+  dataUnsubs.push(onSnapshot(query(collection(db,"shipments"),orderBy("createdAt","desc")),snap=>{
+    shipments=snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderSeason();
+  },err=>console.error("시즌 배송을 불러오지 못했어요",err)));
+  dataUnsubs.push(onSnapshot(query(collection(db,"claims"),orderBy("createdAt","desc")),snap=>{
+    claims=snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderSeason();
+  },err=>console.error("배송 이슈를 불러오지 못했어요",err)));
   // 발주자 전체 이름 (관리자만 읽을 수 있음)
   dataUnsubs.push(onSnapshot(collection(db,"orderContacts"),snap=>{
     ordererNames={}; snap.docs.forEach(d=>{ ordererNames[d.id]=(d.data()||{}).name||""; });
@@ -2260,11 +2308,411 @@ document.addEventListener("click",async e=>{
   }
 });
 
+// ── 시즌 배송 ──
+// 새 시즌 물량을 매장에 보낸 뒤, 매장별 배송 품목·수량을 엑셀(매장이 세로, 품목이 가로인 표)로 등록한다.
+// 등록된 내역은 매장 화면 '배송 이슈' 탭에서 파손·불량·누락 접수의 기준이 된다.
+// 등록은 기록만 하고 재고 수량은 바꾸지 않는다. 접수 기한 = 오픈일 + 7일(그날 밤 12시, 한국 시간).
+let shipments=[], claims=[], curShipId="";
+const CLAIM_DAYS=7;
+function shipDeadline(openDate){
+  const d=new Date(openDate+"T23:59:59+09:00"); d.setDate(d.getDate()+CLAIM_DAYS); return d;
+}
+function fmtMD(d){ const k=new Date(d.getTime()+9*3600e3); return `${k.getUTCMonth()+1}/${k.getUTCDate()}`; }
+
+function renderSeason(){
+  const sel=document.getElementById("ssn-select"); if(!sel) return;
+  if(!shipments.find(s=>s.id===curShipId)) curShipId=shipments[0]?.id||"";
+  sel.innerHTML=shipments.length
+    ? shipments.map(s=>`<option value="${escAttr(s.id)}" ${s.id===curShipId?"selected":""}>${escH(s.title)} (오픈 ${escH(s.openDate)})</option>`).join("")
+    : `<option value="">등록된 시즌이 없어요</option>`;
+  const info=document.getElementById("ssn-info");
+  const ship=shipments.find(s=>s.id===curShipId);
+  if(!ship){
+    info.innerHTML=`<div class="ssn-empty">새 시즌 물량을 매장에 보낸 뒤 <b>＋ 새 시즌 등록</b>으로 매장별 배송 내역을 올려주세요.<br>등록하고 접수를 열면 매장 화면의 '배송 이슈' 탭이 열립니다.</div>`;
+    document.getElementById("ssn-claims-area").innerHTML="";
+    return;
+  }
+  const storeNames=Object.keys(ship.stores||{});
+  const total=storeNames.reduce((a,n)=>a+(ship.stores[n]||[]).reduce((b,it)=>b+(it.qty||0),0),0);
+  const dl=shipDeadline(ship.openDate), expired=Date.now()>dl.getTime();
+  const state=ship.open?(expired?`<span class="ssn-pill">기한 지남</span>`:`<span class="ssn-pill open">접수 중</span>`):`<span class="ssn-pill">접수 닫힘</span>`;
+  info.innerHTML=`<div class="ssn-card">
+    <div class="ssn-title">${escH(ship.title)} ${state}</div>
+    <span>오픈일 <b>${escH(ship.openDate)}</b></span>
+    <span>접수 기한 <b>${fmtMD(dl)} 밤 12시</b></span>
+    <span>매장 <b>${storeNames.length}</b>곳 · 총 <b>${total.toLocaleString()}</b>개</span>
+    <div class="ssn-acts owner-only">
+      <button type="button" onclick="window.toggleShipmentOpen()">${ship.open?"접수 닫기":"접수 열기"}</button>
+      <button type="button" onclick="window.viewShipmentStores()">매장별 내역</button>
+      <button type="button" class="danger" id="ssn-del-btn" onclick="window.deleteShipment()">삭제</button>
+    </div>
+  </div>`;
+  if(typeof renderClaimsArea==="function") renderClaimsArea(ship);
+}
+window.selectShipment=id=>{ curShipId=id; renderSeason(); };
+
+window.toggleShipmentOpen=async()=>{
+  const ship=shipments.find(s=>s.id===curShipId); if(!ship) return;
+  try{
+    await setDoc(doc(db,"shipments",ship.id),{open:!ship.open},{merge:true});
+    showToast(ship.open?"접수를 닫았어요. 매장 화면의 배송 이슈 탭이 잠깁니다.":"접수를 열었어요. 매장 화면에서 배송 이슈를 접수할 수 있어요.");
+  }catch(e){ showToast("오류: "+e.message,"var(--low)"); }
+};
+window.deleteShipment=async()=>{
+  const ship=shipments.find(s=>s.id===curShipId); if(!ship) return;
+  const b=document.getElementById("ssn-del-btn");
+  if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="한 번 더 누르면 삭제"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.armed; b.textContent="삭제"; } },4000); return; }
+  try{ await deleteDoc(doc(db,"shipments",ship.id)); showToast("시즌 배송 내역을 삭제했어요. (접수된 배송 이슈는 남아 있어요)"); }
+  catch(e){ showToast("오류: "+e.message,"var(--low)"); }
+};
+window.viewShipmentStores=()=>{
+  const ship=shipments.find(s=>s.id===curShipId); if(!ship) return;
+  const modal=document.createElement("div"); modal.className="modal-bg"; modal.id="ssn-stores-modal";
+  const names=Object.keys(ship.stores||{}).sort();
+  modal.innerHTML=`<div class="modal-sheet" style="max-width:560px">
+    <div class="modal-handle"></div>
+    <div class="modal-title">${escH(ship.title)} · 매장별 배송 내역</div>
+    ${names.map(n=>`<div class="ssn-map"><div class="ssn-map-h">${escH(n)}<span>${ship.stores[n].reduce((a,it)=>a+it.qty,0)}개</span></div>
+      ${ship.stores[n].map(it=>`<div style="font-size:12px;color:var(--sub)">${escH(it.itemName)}${it.optName?` [${escH(it.optName)}]`:""} <b style="color:var(--ink)">${it.qty}</b></div>`).join("")}</div>`).join("")}
+    <button class="btn-secondary-sm" onclick="document.getElementById('ssn-stores-modal').remove()">닫기</button>
+  </div>`;
+  modal.addEventListener("click",e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+};
+
+// ── 새 시즌 등록: 엑셀 읽기 ──
+// 표 모양: 한 열에 매장명, 머리글 줄에 품목명. 지역(KR/CN/JP)마다 머리글 줄이 다시 나와도 된다.
+// 합계·소계 줄, 수량이 하나도 없는 줄은 건너뛴다.
+const SKIP_HEAD=/^(NO\.?|번호|지역|국가|REGION|COUNTRY|AREA|비고|REMARKS?|NOTE|합계|총계|소계|TOTAL|SUM|매장|매장명|STORE|STORE NAME|SHOP)$/i;
+const SKIP_ROW=/합계|총계|소계|TOTAL|SUBTOTAL|^SUM$/i;
+function storeKey(s){ return String(s||"").toUpperCase().replace(/\s*_\s*[A-Z]+\s*$/,"").replace(/[\s\-_().·]/g,""); }
+function matchStore(raw){
+  const k=storeKey(raw); if(!k) return null;
+  return STORE_LIST.find(n=>storeKey(n)===k)||null;
+}
+function itemKey(s){ return String(s||"").toUpperCase().replace(/\s+/g," ").trim(); }
+function numOf(v){ if(typeof v==="number") return v; const n=Number(String(v||"").replace(/,/g,"").trim()); return isFinite(n)?n:NaN; }
+
+function parseShipSheet(rows){
+  // 1) 매장명 열 찾기: 매장 목록과 이름이 맞는 칸이 가장 많은 열
+  const width=Math.max(0,...rows.map(r=>r.length));
+  let storeCol=-1,best=0;
+  for(let c=0;c<Math.min(width,8);c++){
+    const n=rows.filter(r=>matchStore(r[c])).length;
+    if(n>best){ best=n; storeCol=c; }
+  }
+  if(storeCol<0) return null;
+  // 2) 위에서부터 내려가며: 글자 칸이 2개 이상인 줄 = 머리글, 매장명이 있고 숫자가 있는 줄 = 매장
+  let head=null; const out=[]; const headers=new Set();
+  for(const r of rows){
+    const right=r.slice(storeCol+1);
+    const texts=right.filter(v=>String(v).trim()!==""&&isNaN(numOf(v)));
+    if(texts.length>=2 && !matchStore(r[storeCol])){
+      head={}; right.forEach((v,i)=>{ const h=String(v).trim(); if(h&&isNaN(numOf(v))&&!SKIP_HEAD.test(h)) head[storeCol+1+i]=h; });
+      continue;
+    }
+    const raw=String(r[storeCol]||"").trim();
+    if(!head||!raw||SKIP_ROW.test(raw)) continue;
+    const cells={};
+    for(const c in head){ const q=numOf(r[c]); if(q>0){ cells[head[c]]=(cells[head[c]]||0)+Math.round(q); headers.add(head[c]); } }
+    if(Object.keys(cells).length) out.push({raw, store:matchStore(raw), cells});
+  }
+  return out.length?{rows:out,headers:[...headers]}:null;
+}
+
+// 엑셀 머리글 → 재고 품목 연결. 지난번에 고른 연결은 이 브라우저에 기억해 둔다.
+const LANG_OPT={KR:["한국어"],CN:["간체","简体"],TW:["번체","繁體","繁体"],HK:["번체","繁體","繁体"],JP:["일본어","日本語"]};
+function autoOption(item,storeName){
+  const cc=(String(storeName).match(/_\s*([A-Z]+)\s*$/)||[])[1]||"";
+  const keys=LANG_OPT[cc]||["영어","ENGLISH"];
+  return (item.options||[]).find(o=>keys.some(k=>String(o.name).toUpperCase().includes(k.toUpperCase())))?.name||null;
+}
+function loadShipMap(){ try{ return JSON.parse(localStorage.getItem("gm-ship-map")||"{}"); }catch(e){ return {}; } }
+function saveShipMap(m){ try{ localStorage.setItem("gm-ship-map",JSON.stringify(m)); }catch(e){} }
+let reg=null; // 등록 창 작업 상태
+
+window.openShipmentRegister=()=>{
+  reg={title:"",openDate:"",parsed:null,map:{},storeMap:{},sheetNames:[],wb:null,sheet:""};
+  const modal=document.createElement("div"); modal.className="modal-bg"; modal.id="ssn-reg-modal";
+  modal.innerHTML=`<div class="modal-sheet" style="max-width:620px">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🚚 새 시즌 배송 등록</div>
+    <div class="field-wrap"><div class="field-label">시즌 이름 *</div>
+      <input id="ssn-title" class="field-input" placeholder="예: 2026 FW" autocomplete="off"></div>
+    <div class="field-wrap"><div class="field-label">매장 오픈일 * (접수 기한 = 오픈일 + ${CLAIM_DAYS}일)</div>
+      <input id="ssn-open" type="date" class="field-input"></div>
+    <div class="field-wrap"><div class="field-label">매장별 배송 수량 엑셀 * (매장이 세로, 품목이 가로)</div>
+      <input id="ssn-file" type="file" accept=".xlsx,.xls" class="field-input"></div>
+    <div id="ssn-reg-body"></div>
+    <div id="ssn-reg-err" class="ssn-err"></div>
+    <button class="btn-primary" id="ssn-reg-go" onclick="window.confirmShipmentRegister()" disabled>등록하고 접수 열기</button>
+    <button class="btn-secondary-sm" onclick="document.getElementById('ssn-reg-modal').remove()">취소</button>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById("ssn-file").addEventListener("change",e=>readShipExcel(e.target.files[0]));
+  modal.querySelector("#ssn-title").addEventListener("input",regValidate);
+  modal.querySelector("#ssn-open").addEventListener("input",regValidate);
+  document.getElementById("ssn-reg-body").addEventListener("change",regBodyChange);
+  document.getElementById("ssn-reg-body").addEventListener("click",regBodyClick);
+};
+
+function readShipExcel(file){
+  if(!file) return;
+  const fr=new FileReader();
+  fr.onload=e=>{
+    try{
+      reg.wb=XLSX.read(e.target.result,{type:"array"});
+      // 매장 이름이 가장 많이 맞는 시트를 고른다
+      let bestSheet="",bestN=0;
+      reg.wb.SheetNames.forEach(sn=>{
+        const p=parseShipSheet(XLSX.utils.sheet_to_json(reg.wb.Sheets[sn],{header:1,defval:""}));
+        if(p&&p.rows.length>bestN){ bestN=p.rows.length; bestSheet=sn; }
+      });
+      reg.sheetNames=reg.wb.SheetNames;
+      if(!bestSheet){ document.getElementById("ssn-reg-body").innerHTML=""; regErr("매장명 열을 찾지 못했어요. 매장명이 매장 목록(STORE_LIST)과 같은 이름인지 확인해 주세요."); return; }
+      useShipSheet(bestSheet);
+    }catch(err){ regErr("엑셀을 읽지 못했어요: "+err.message); }
+  };
+  fr.readAsArrayBuffer(file);
+}
+function useShipSheet(sn){
+  reg.sheet=sn;
+  reg.parsed=parseShipSheet(XLSX.utils.sheet_to_json(reg.wb.Sheets[sn],{header:1,defval:""}));
+  const saved=loadShipMap();
+  reg.map={}; reg.storeMap={};
+  (reg.parsed?.headers||[]).forEach(h=>{
+    if(saved[h]){ reg.map[h]=saved[h].filter(l=>l.skip||items.some(i=>i.id===l.itemId)); if(reg.map[h].length) return; }
+    const hit=items.filter(i=>itemKey(i.name)===itemKey(h));
+    reg.map[h]=hit.length===1?[{itemId:hit[0].id,opt:hit[0].options?.length?"__auto":"",mul:1}]:[];
+  });
+  (reg.parsed?.rows||[]).forEach(r=>{ if(!r.store) reg.storeMap[r.raw]=""; });
+  renderRegBody();
+}
+
+function itemOptionsHTML(sel){
+  const sorted=[...items].sort((a,b)=>String(a.collection).localeCompare(String(b.collection))||String(a.name).localeCompare(String(b.name)));
+  return `<option value="">품목 선택</option>`+sorted.map(i=>`<option value="${escAttr(i.id)}" ${i.id===sel?"selected":""}>${escH(i.collection)} · ${escH(i.name)}</option>`).join("");
+}
+function renderRegBody(){
+  const body=document.getElementById("ssn-reg-body"); const p=reg.parsed;
+  if(!p){ body.innerHTML=""; regErr("이 시트에서 매장별 수량을 찾지 못했어요."); return; }
+  const qtyOf=h=>p.rows.reduce((a,r)=>a+(r.cells[h]||0),0);
+  const sheetSel=reg.sheetNames.length>1?`<div class="field-wrap"><div class="field-label">시트</div><select class="field-input" data-act="sheet">${reg.sheetNames.map(n=>`<option ${n===reg.sheet?"selected":""}>${escH(n)}</option>`).join("")}</select></div>`:"";
+  const heads=p.headers.map((h,hi)=>{
+    const lines=reg.map[h]||[];
+    const skip=lines.length===1&&lines[0].skip;
+    return `<div class="ssn-map" data-h="${hi}">
+      <div class="ssn-map-h">${escH(h)}<span>엑셀 합계 ${qtyOf(h)}개</span></div>
+      ${skip?`<div class="ssn-line" style="color:var(--muted);font-size:12px">이 열은 등록하지 않아요 <button type="button" class="ssn-mini" data-act="unskip">되돌리기</button></div>`:
+      lines.map((l,li)=>{
+        const it=items.find(i=>i.id===l.itemId);
+        const opts=it?.options?.length?`<select class="s-opt" data-act="opt" data-li="${li}">
+            <option value="__auto" ${l.opt==="__auto"?"selected":""}>매장 국가별 자동</option>
+            ${it.options.map(o=>`<option value="${escAttr(o.name)}" ${l.opt===o.name?"selected":""}>${escH(o.name)}</option>`).join("")}</select>`:"";
+        return `<div class="ssn-line">
+          <select class="s-item" data-act="item" data-li="${li}">${itemOptionsHTML(l.itemId)}</select>${opts}
+          <span style="font-size:11px;color:var(--muted)">×</span><input class="s-mul" type="number" min="1" value="${l.mul||1}" data-act="mul" data-li="${li}" aria-label="1세트당 개수">
+          <button type="button" class="ssn-mini" data-act="del" data-li="${li}">빼기</button></div>`;
+      }).join("")+`<div class="ssn-line"><button type="button" class="ssn-mini" data-act="add">＋ 품목 연결${lines.length?" (세트면 구성품 추가)":""}</button>
+        <button type="button" class="ssn-mini" data-act="skip">이 열 등록 안 함</button></div>`}
+    </div>`;
+  }).join("");
+  const unknown=Object.keys(reg.storeMap);
+  const storeOpts=sel=>`<option value="">등록 안 함</option><option value="__raw" ${sel==="__raw"?"selected":""}>엑셀 이름 그대로 등록</option>`+STORE_LIST.map(n=>`<option ${n===sel?"selected":""}>${escH(n)}</option>`).join("");
+  body.innerHTML=`${sheetSel}
+    <div class="ssn-sec">품목 연결 — 엑셀 머리글을 재고 품목과 맞춰주세요 (세트는 구성품을 모두 연결)</div>${heads}
+    <div class="ssn-sec">매장 — 맞춰진 매장 ${p.rows.length-unknown.length}곳${unknown.length?` · 매장 목록에 없는 이름 ${unknown.length}개`:""}</div>
+    ${unknown.length?unknown.map((raw,ri)=>`<div class="ssn-store"><span>${escH(raw)}</span><select data-act="store" data-ri="${ri}">${storeOpts(reg.storeMap[raw])}</select></div>`).join(""):`<div style="font-size:12px;color:var(--muted)">엑셀의 매장이 모두 매장 목록과 맞춰졌어요.</div>`}
+    <div style="font-size:11.5px;color:var(--muted);line-height:1.7;margin:12px 0 4px">· 등록은 배송 기록만 남기고 <b style="color:var(--sub)">재고 수량은 바꾸지 않아요</b>.<br>· 연결은 이 브라우저에 기억돼서 다음 시즌에도 같은 머리글이면 자동으로 채워져요.</div>`;
+  regValidate();
+}
+function regBodyChange(e){
+  const t=e.target, act=t.dataset.act; if(!act) return;
+  if(act==="sheet"){ useShipSheet(t.value); return; }
+  if(act==="store"){ reg.storeMap[Object.keys(reg.storeMap)[+t.dataset.ri]]=t.value; regValidate(); return; }
+  const h=reg.parsed.headers[+t.closest("[data-h]").dataset.h], l=reg.map[h][+t.dataset.li];
+  if(act==="item"){ const it=items.find(i=>i.id===t.value); l.itemId=t.value; l.opt=it?.options?.length?"__auto":""; renderRegBody(); return; }
+  if(act==="opt") l.opt=t.value;
+  if(act==="mul") l.mul=Math.max(1,parseInt(t.value)||1);
+  regValidate();
+}
+function regBodyClick(e){
+  const t=e.target.closest("button[data-act]"); if(!t) return;
+  const h=reg.parsed.headers[+t.closest("[data-h]").dataset.h];
+  if(t.dataset.act==="add") (reg.map[h]=reg.map[h]||[]).push({itemId:"",opt:"",mul:1});
+  if(t.dataset.act==="del") reg.map[h].splice(+t.dataset.li,1);
+  if(t.dataset.act==="skip") reg.map[h]=[{skip:true}];
+  if(t.dataset.act==="unskip") reg.map[h]=[];
+  renderRegBody();
+}
+function regErr(msg){ const el=document.getElementById("ssn-reg-err"); if(el) el.innerHTML=msg; }
+
+// 등록할 매장별 내역을 만들고, 문제가 있으면 목록으로 돌려준다
+function buildShipStores(){
+  const errs=[], stores={};
+  const p=reg.parsed; if(!p) return {errs:["엑셀을 올려주세요."],stores};
+  p.headers.forEach(h=>{
+    const lines=reg.map[h]||[];
+    if(!lines.length) errs.push(`'${h}' 열을 재고 품목과 연결하거나 '이 열 등록 안 함'을 눌러주세요.`);
+    else if(!lines[0].skip && lines.some(l=>!l.itemId)) errs.push(`'${h}' 열에 품목을 고르지 않은 줄이 있어요.`);
+  });
+  if(errs.length) return {errs,stores};
+  const optMiss=new Set();
+  p.rows.forEach(r=>{
+    let name=r.store;
+    if(!name){ const m=reg.storeMap[r.raw]; if(!m) return; name=m==="__raw"?r.raw:m; }
+    const acc=stores[name]||(stores[name]={});
+    for(const h in r.cells){
+      for(const l of (reg.map[h]||[])){
+        if(l.skip) continue;
+        const it=items.find(i=>i.id===l.itemId); if(!it) continue;
+        let opt="";
+        if(it.options?.length){
+          opt=l.opt==="__auto"?autoOption(it,name):l.opt;
+          if(!opt){ optMiss.add(`${it.name} → ${name}`); continue; }
+        }
+        const k=it.id+"|"+opt;
+        acc[k]=acc[k]||{itemId:it.id,itemName:it.name,optName:opt,collection:it.collection||"",qty:0};
+        acc[k].qty+=r.cells[h]*(l.mul||1);
+      }
+    }
+  });
+  if(optMiss.size) errs.push("국가별 자동으로 옵션을 고르지 못했어요. 해당 품목의 옵션을 직접 골라주세요: "+[...optMiss].slice(0,5).join(", ")+(optMiss.size>5?` 외 ${optMiss.size-5}건`:""));
+  const out={}; for(const n in stores){ const list=Object.values(stores[n]); if(list.length) out[n]=list; }
+  if(!Object.keys(out).length && !errs.length) errs.push("등록할 매장이 없어요.");
+  return {errs,stores:out};
+}
+function regValidate(){
+  if(!reg) return;
+  const title=document.getElementById("ssn-title")?.value.trim(), open=document.getElementById("ssn-open")?.value;
+  const {errs}=buildShipStores();
+  if(!title) errs.unshift("시즌 이름을 입력해 주세요.");
+  if(!open) errs.unshift("오픈일을 골라주세요.");
+  regErr(reg.parsed?errs.map(e=>"· "+escH(e)).join("<br>"):"");
+  document.getElementById("ssn-reg-go").disabled=errs.length>0;
+}
+window.confirmShipmentRegister=async()=>{
+  const title=document.getElementById("ssn-title").value.trim(), openDate=document.getElementById("ssn-open").value;
+  const {errs,stores}=buildShipStores();
+  if(errs.length||!title||!openDate){ regValidate(); return; }
+  const btn=document.getElementById("ssn-reg-go"); btn.disabled=true; btn.textContent="등록 중...";
+  try{
+    const saved=loadShipMap(); reg.parsed.headers.forEach(h=>{ saved[h]=reg.map[h]; }); saveShipMap(saved);
+    const ref=await addDoc(collection(db,"shipments"),{title,openDate,open:true,stores,createdAt:serverTimestamp(),createdBy:auth.currentUser?.email||""});
+    curShipId=ref.id;
+    document.getElementById("ssn-reg-modal")?.remove();
+    showToast(`✅ ${title} 등록 완료 · 매장 ${Object.keys(stores).length}곳, 접수가 열렸어요`);
+  }catch(e){ btn.disabled=false; btn.textContent="등록하고 접수 열기"; regErr("저장하지 못했어요: "+escH(e.message)); }
+};
+
+// ── 배송 이슈 집계 ──
+// 상태: 검토중 → 재발송 예정 → 재발송 완료 / 반려
+// '재발송 예정'으로 바꾸는 순간 재고에서 빼고, 재발송 예정·완료에서 검토중·반려로 되돌리면 다시 채운다.
+const CLAIM_STATUS=["검토중","재발송 예정","재발송 완료","반려"];
+const CLAIM_HELD=["재발송 예정","재발송 완료"];
+const CLAIM_TYPE_LABEL={"파손":"배송 중 파손","불량":"제품 불량","누락":"누락·수량 부족"};
+let claimTypeFilter="전체";
+
+function stockOf(itemId,optName){
+  const it=items.find(i=>i.id===itemId); if(!it) return null;
+  if(optName&&it.options?.length){ const o=it.options.find(x=>x.name===optName); return o?(o.quantity||0):null; }
+  return it.quantity||0;
+}
+function renderClaimsArea(ship){
+  const area=document.getElementById("ssn-claims-area"); if(!area) return;
+  const all=claims.filter(c=>c.shipmentId===ship.id);
+  const rows=all.filter(c=>claimTypeFilter==="전체"||c.type===claimTypeFilter);
+  const live=rows.filter(c=>c.status!=="반려");
+  const kpi=[["접수 건수",rows.length,""],["재요청 합계 (반려 제외)",live.reduce((a,c)=>a+(c.qty||0),0),""],
+    ["접수 매장",new Set(rows.map(c=>c.storeName)).size,""],["검토 대기",rows.filter(c=>c.status==="검토중").length,"acc"]];
+  const chips=["전체","파손","불량","누락"].map(t=>{
+    const n=t==="전체"?all.length:all.filter(c=>c.type===t).length;
+    return `<button type="button" class="fbtn ${claimTypeFilter===t?"on":""}" onclick="window.setClaimType('${t}')">${t==="전체"?"전체":CLAIM_TYPE_LABEL[t]}<span class="st-n">${n}</span></button>`;
+  }).join("");
+  // 품목별 재요청 합계 (재발송 준비용, 반려 제외)
+  const agg={};
+  live.forEach(c=>{ const k=c.itemId+"|"+(c.optName||"");
+    const a=agg[k]||(agg[k]={name:c.itemName,opt:c.optName||"",coll:c.collection||"",파손:0,불량:0,누락:0,total:0,itemId:c.itemId});
+    a[c.type]=(a[c.type]||0)+c.qty; a.total+=c.qty; });
+  const aggRows=Object.values(agg).sort((a,b)=>b.total-a.total).map(a=>{
+    const st=stockOf(a.itemId,a.opt);
+    return `<tr><td class="c-coll">${escH(a.coll)}</td><td class="c-name"><b>${escH(a.name)}</b>${a.opt?`<div class="c-sub">${escH(a.opt)}</div>`:""}</td>
+      <td>${a.파손||"-"}</td><td>${a.불량||"-"}</td><td>${a.누락||"-"}</td><td class="c-qty">${a.total}</td>
+      <td class="c-qty ${st!==null&&st<a.total?"lowtxt":""}">${st===null?"-":st}</td></tr>`;
+  }).join("");
+  const listRows=rows.map(c=>{
+    const d=c.createdAt?.toDate?c.createdAt.toDate():null;
+    const date=d?`${d.getMonth()+1}/${d.getDate()}`:(c.date||"");
+    const photos=(c.photos||[]).map((p,i)=>`<img src="${p}" alt="사진 ${i+1}" data-claim="${escAttr(c.id)}" data-pi="${i}" style="width:34px;height:34px;object-fit:cover;cursor:pointer;margin-right:3px;border:1px solid var(--line)">`).join("");
+    return `<tr class="${c.status==="반려"||c.status==="재발송 완료"?"dim":""}">
+      <td style="white-space:nowrap">${escH(date)}</td>
+      <td class="c-name"><b>${escH(c.storeName)}</b><div class="c-sub">${escH(c.reporter||"")}</div></td>
+      <td class="c-name">${escH(c.itemName)}${c.optName?`<div class="c-sub">${escH(c.optName)}</div>`:""}</td>
+      <td><span class="ssn-pill" style="border-color:var(--accent);color:var(--accent)">${escH(c.type)}</span></td>
+      <td class="c-qty">${c.qty}<span class="unit"> / ${c.shipped}</span></td>
+      <td style="min-width:180px;white-space:normal;font-size:12px">${escH(c.reason)}</td>
+      <td style="white-space:nowrap">${photos||'<span class="c-sub">-</span>'}</td>
+      <td><select class="field-input" style="margin:0;padding:6px 8px;font-size:12px;width:auto" data-claim-status="${escAttr(c.id)}" aria-label="처리 상태">
+        ${CLAIM_STATUS.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></td>
+    </tr>`;
+  }).join("");
+  area.innerHTML=`<div class="adm-kpis">${kpi.map(([l,v,cl])=>`<div class="kpi ${cl}" style="cursor:default"><span class="l">${l}</span><span class="v">${v}</span></div>`).join("")}</div>
+    <div class="st-chips">${chips}</div>
+    <div class="ssn-sec">품목별 재요청 합계 (재발송 준비용 · 반려 제외)</div>
+    ${aggRows?`<div class="s-table-wrap"><table class="s-table" style="min-width:520px"><thead><tr><th>컬렉션</th><th>품목</th><th>파손</th><th>불량</th><th>누락</th><th>합계</th><th>현재 재고</th></tr></thead><tbody>${aggRows}</tbody></table></div>`
+      :`<div class="ssn-empty">아직 접수된 배송 이슈가 없어요.</div>`}
+    <div class="ssn-sec">접수 목록 — 상태를 '재발송 예정'으로 바꾸면 재고에서 빠져요</div>
+    ${listRows?`<div class="s-table-wrap"><table class="s-table" style="min-width:820px"><thead><tr><th>접수일</th><th>매장 · 접수자</th><th>품목</th><th>유형</th><th>요청/배송</th><th>사유</th><th>사진</th><th>상태</th></tr></thead><tbody>${listRows}</tbody></table></div>`
+      :`<div class="ssn-empty">이 조건의 접수 내역이 없어요.</div>`}`;
+}
+window.setClaimType=t=>{ claimTypeFilter=t; renderSeason(); };
+
+document.getElementById("ssn-claims-area").addEventListener("click",e=>{
+  const img=e.target.closest("img[data-claim]"); if(!img) return;
+  const c=claims.find(x=>x.id===img.dataset.claim); if(!c) return;
+  window.viewPhoto(c.photos[+img.dataset.pi],c.photos);
+});
+document.getElementById("ssn-claims-area").addEventListener("change",e=>{
+  const sel=e.target.closest("select[data-claim-status]"); if(!sel) return;
+  setClaimStatus(sel.dataset.claimStatus,sel.value,sel);
+});
+
+async function setClaimStatus(id,newStatus,sel){
+  const c=claims.find(x=>x.id===id); if(!c||c.status===newStatus) return;
+  const wasHeld=CLAIM_HELD.includes(c.status), willHold=CLAIM_HELD.includes(newStatus);
+  const line={items:[{itemId:c.itemId,optName:c.optName||null,qty:c.qty}]};
+  let note="";
+  try{
+    if(!wasHeld&&willHold){
+      const st=stockOf(c.itemId,c.optName);
+      if(st===null){ showToast("재고에서 이 품목을 찾지 못해 차감할 수 없어요","var(--low)"); sel.value=c.status; return; }
+      if(st<c.qty){ showToast(`재고가 ${c.qty-st}개 부족해요 (현재 ${st}개). 재고를 먼저 채워주세요.`,"var(--low)"); sel.value=c.status; return; }
+      await adjustStock(line,-1); note=" 재고에서 차감했어요."; logClaimStock(c,-c.qty,st);
+    }else if(wasHeld&&!willHold){
+      const st=stockOf(c.itemId,c.optName);
+      await adjustStock(line,+1); note=" 재고를 되돌렸어요."; logClaimStock(c,+c.qty,st);
+    }
+    await setDoc(doc(db,"claims",id),{status:newStatus,handledAt:new Date().toISOString(),handler:auth.currentUser?.email||""},{merge:true});
+    showToast(`🔄 ${c.storeName} · ${c.itemName} → ${newStatus}.${note}`);
+  }catch(err){ sel.value=c.status; showToast("오류: "+err.message,"var(--low)"); }
+}
+// 재고 변동 기록 (기록 권한은 최고관리자만 있어서, 담당자가 처리하면 기록은 건너뛴다)
+async function logClaimStock(c,diff,before){
+  if(userRole!=="owner"||before===null) return;
+  try{
+    const now=new Date();
+    await addDoc(collection(db,"stockLogs"),{itemId:c.itemId,itemName:c.itemName,collection:c.collection||"",optName:c.optName||"",
+      before,after:Math.max(0,before+diff),diff,type:diff<0?"배송이슈 재발송":"배송이슈 재발송 취소",
+      date:todayDate(),time:nowTime(),createdAt:serverTimestamp()});
+  }catch(e){ console.error("재고 기록 실패",e); }
+}
+
 // ── 역할별 기능 제한 ──
 // 담당자(manager)는 재고·프로그램 관리 기능을 쓸 수 없다. 버튼이 숨겨져 있어도 함수 단계에서 한 번 더 막는다.
 // (출고요청 승인·반려·상태 변경·취소·매장명 수정, 조회, 쉬핑 리스트·인쇄는 담당자도 가능)
 ["openAddItemModal","confirmAddItem","openItemNameModal","confirmItemName","openQtyModal","confirmQtyModal",
- "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto","openAccountModal","openRestockModal","saveRestock"].forEach(name=>{
+ "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto","openAccountModal","openRestockModal","saveRestock",
+ "openShipmentRegister","confirmShipmentRegister","toggleShipmentOpen","deleteShipment"].forEach(name=>{
   const original=window[name];
   if(typeof original!=="function") return;
   window[name]=function(...args){
