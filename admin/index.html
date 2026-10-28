@@ -2798,7 +2798,8 @@ async function confirmStoreBulk(){
   let ok=0;
   try{ for(const x of smBulk){ if(!x.isNew&&!x.aliases.length) continue; await saveStoreEntry(x.full,x.aliases); ok++; } }
   catch(e){ smErr("저장 중 오류: "+escH(e.message)); }
-  document.getElementById("sm-bulk").innerHTML=""; smBulk=[];
+  document.getElementById("sm-bulk").innerHTML=""; smBulk=[]; smErr("");
+  document.getElementById("sm-file").value="";
   showToast(`✅ 매장 ${ok}곳 저장했어요`);
 }
 
