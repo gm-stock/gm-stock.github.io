@@ -1496,7 +1496,9 @@ window.confirmReject=async(orderId)=>{
 // 관리자: 매장명 수정
 let editStoreOrderId=null;
 // ── 매장명 자동완성 데이터 ──
-const STORE_LIST = ["하우스 성수 _ KR", "하우스 도산 _ KR", "신사 FS _ KR", "홍대 FS _ KR", "롯데월드타워 (잠실) _ KR", "신세계 스타필드 (하남) _ KR", "롯데 (동탄) _ KR", "현대 (여의도) _ KR", "롯데 (명동) _ KR", "롯데 (서면) _ KR", "신세계 (센텀) _ KR", "신세계 (대구) _ KR", "신세계 (경기) _ KR", "신세계 (의정부) _ KR", "신세계 (명동) _ KR", "신세계 (강남) _ KR", "신세계 (대전) _ KR", "신세계 (광주) _ KR", "현대 (무역) _ KR", "현대 (대구) _ KR", "현대 (판교) _ KR", "갤러리아 (광교) _ KR", "갤러리아 (압구정) _ KR", "롯데 (잠실) _ KR", "신세계 (천안아산) _ KR", "현대 (압구정) _ KR", "갤러리아 (대전) _ KR", "현대 (목동) _ KR", "롯데 소공 면세 _ KR", "롯데 월드타워 면세 _ KR", "신세계 명동 면세 _ KR", "현대 면세 (인천공항 T1) _ KR", "신라 면세 (인청공항 T2) _ KR", "신라 서울 면세 _ KR", "신라 제주 면세 _ KR", "롯데 제주 면세 _ KR", "HAUS SHANGHAI _ CN", "TAIKOO-S BEIJING _ CN", "TAIKOO CHENGDU _ CN", "HANGZHOU TOWER _ CN", "DEJI NANJING _ CN", "SKP BEIJING _ CN", "HANKYU NINGBO _ CN", "TAIKOOLI SHANGHAI _ CN", "SKP CHENGDU _ CN", "MIXC XIAMEN _ CN", "PC GUANGZHOU _ CN", "IFC SHANGHAI _ CN", "TAIKOO GUANGZHOU _ CN", "SKP XIAN _ CN", "MIXC SHENYANG _ CN", "CHANGSHA IFS _ CN", "HANGZHOU MIXC _ CN", "HAUS SHENZHEN _ CN", "HAINAN SANYA _ CN", "CHONGQING MIXC _ CN", "SHANGHAI XINTIANDI _ CN", "SHANGHAI OFFICE _ CN", "NEWYORK _ USA", "LA COSTAMESA _ USA", "LA FS _ USA", "SAN JOSE _ USA", "HOUSTON _ USA", "NEWJERSEY _ USA", "LAS VEGAS _ USA", "USE OFFICE _ USA", "TORONTO _ CANADA", "ION _ SG", "MBS _ SG", "HABOUR CITY _ HK", "CAUSEWAY _ HK", "BREEZE TAIWAN _ TW", "THAICHUNG _ TW", "THE DUBAI MALL _ DUBAI", "SYDNEY AIR _ AUS", "MELBOURNE _ AUS", "DAVID JONES _ AUS", "BLUEBELL OFFICE _ AUS", "SELFIDGE LONDON _ UK", "10CC _ ITALY", "EMQUARTIER _ THAI", "SIAM-PARAGON _ THAI", "ICON SIAM _ THAI", "SHANGRI-LA _ PHILIPPINES", "TRX _ MAL", "KLCC _ MAL", "OSAKA HANKYU _ JP", "TOKYO AOYAMA _ JP", "TOKYO HANKYU _ JP", "TOKYO GINZA _ JP", "TOKYO HARAJUKU _ JP", "OSAKA PARCO _ JP", "PARIS _ FR"];
+const STORE_LIST = ["SEONG SU LAYER41 _ KR", "도산 HAUS _ KR", "성수 HAUS _ KR", "신사FS _ KR", "홍대FS _ KR", "롯데월드타워(잠실) _ KR", "신세계 스타필드(하남) _ KR", "롯데(동탄) _ KR", "현대(여의도) _ KR", "롯데(명동) _ KR", "롯데(서면) _ KR", "신세계(센텀) _ KR", "신세계(대구) _ KR", "신세계(경기) _ KR", "신세계(의정부) _ KR", "신세계(명동) _ KR", "신세계(강남) _ KR", "신세계(대전) _ KR", "신세계(광주) _ KR", "현대(무역) _ KR", "현대(대구) _ KR", "현대(판교) _ KR", "갤러리아(광교) _ KR", "갤러리아(압구정) _ KR", "롯데(잠실) _ KR", "롯데인천 _ KR", "신세계(천안아산) _ KR", "현대(압구정) _ KR", "갤러리아(대전) _ KR", "현대(목동) _ KR", "현대 면세 T1 _ KR", "신라 면세T2 _ KR", "롯데면세(소공) _ KR", "롯데면세(제주) _ KR", "롯데면세(월드타워) _ KR", "신라면세(서울) _ KR", "신라면세(제주) _ KR", "신세계면세(명동) _ KR", "HAUS SHANGHAI _ CN", "TAIKOO-S BEIJING _ CN", "TAIKOO CHENGDU _ CN", "HANGZHOU TOWER _ CN", "DEJI NANJING _ CN", "SKP BEIJING _ CN", "HANKYU NINGBO _ CN", "TAIKOOLI SHANGHAI _ CN", "SKP CHENGDU _ CN", "MIXC XIAMEN _ CN", "PC GUANGZHOU _ CN", "TAIKOO GUANGZHOU _ CN", "SKP XIAN _ CN", "MIXC SHENYANG _ CN", "CHANGSHA IFS _ CN", "HANGZHOU MIXC _ CN", "HAUS SHENZHEN _ CN", "HAINAN SANYA _ CN", "CHONGQING MIXC _ CN", "SHANGHAI XINTIANDI _ CN", "SHANGHAI JAKC _ CN", "SHANGHAI GATE M _ CN", "SHANGHAI WAREHOUSE _ CN", "NY _ USA", "LA COSTAMESA _ USA", "LA FS _ USA", "SJ _ USA", "HOUSTON _ USA", "NEWJERSEY _ USA", "LAS VEGAS _ USA", "SAN DIEGO _ USA", "USA OFFICE _ USA", "TORONTO _ CANADA", "VANCOUVER _ CANADA", "ION _ SG", "MBS _ SG", "HABOUR CITY _ HK", "HK(CAUSEWAY) _ HK", "BREEZE TAIWAN _ TW", "TAICHUNG _ TW", "THE DUBAI MALL _ DUBAI", "SYDNEY AIR(T1) _ AUS", "MELBOURNE _ AUS", "DAVID JONES _ AUS", "AUS OFFICE _ AUS", "SELFRIDGE LONDON _ UK", "10CC _ ITALY", "EMQUATIER _ THAI", "SIAM PARAGON _ THAI", "ICON SIAM _ THAI", "SHANGRI-LA _ PH", "TRX _ MAL", "KLCC _ MAL", "TOKYO GINZA _ JP", "TOKYO AOYAMA _ JP", "TOKYO HANKYU _ JP", "OSAKA HANKYU _ JP", "OSAKA PARCO _ JP", "PARIS _ FR", "DOVERSTREET _ UK", "LA DOVERSTREET _ USA", "NY DOVERSTREET _ USA"];
+// 엑셀(배분표)에 매장명과 다르게 적히는 이름 → 매장명 (2026-10-28 사용자가 준 매장 목록 엑셀 기준)
+const STORE_ALIASES = {"상해 창고(추후 대처용)": "SHANGHAI WAREHOUSE _ CN", "사무실(추후 대처용)": "USA OFFICE _ USA", "블루벨 사무실(추후 대처용)": "AUS OFFICE _ AUS", "엠콰티어": "EMQUATIER _ THAI", "시암파라곤": "SIAM PARAGON _ THAI", "아이콘 시암": "ICON SIAM _ THAI", "프랑스 파리": "PARIS _ FR"};
 
 function initStoreAutocomplete(inputId){
   const input = document.getElementById(inputId);
@@ -2666,8 +2668,10 @@ function applyExtraStores(){
   extraStores.forEach(s=>{ if(s.name&&!names.includes(s.name)) names.push(s.name); });
   STORE_LIST.length=0; STORE_LIST.push(...names);
   storeAlias={};
+  Object.entries(STORE_ALIASES).forEach(([a,n])=>{ const k=storeKey(a); if(k) storeAlias[k]=n; });
   extraStores.forEach(s=>(s.aliases||[]).forEach(a=>{ const k=storeKey(a); if(k) storeAlias[k]=s.name; }));
 }
+applyExtraStores(); // 기본 별칭(STORE_ALIASES)은 Firestore를 못 읽어도 바로 쓸 수 있게
 function storeCountries(){
   const set=new Set(); STORE_LIST.forEach(n=>{ const m=n.match(/_\s*([A-Z]+)\s*$/); if(m) set.add(m[1]); }); return [...set];
 }
@@ -2708,7 +2712,8 @@ window.openStoreManager=()=>{
       </div>
       <div id="sm-bulk"></div>
     </div>
-    <div class="ssn-sec">추가한 매장 · 엑셀 이름</div>
+    <div class="ssn-sec" style="display:flex;justify-content:space-between;align-items:center;gap:8px">추가한 매장 · 엑셀 이름
+      <button type="button" class="ssn-mini" id="sm-clear" style="border-color:var(--low);color:var(--low)">추가한 매장 모두 지우기</button></div>
     <div id="sm-list"></div>
     <div id="sm-err" class="ssn-err"></div>
     <button class="btn-secondary-sm" onclick="document.getElementById('store-mgr-modal').remove()">닫기</button>
@@ -2736,6 +2741,15 @@ window.openStoreManager=()=>{
   };
   document.getElementById("sm-file").addEventListener("change",e=>readStoreExcel(e.target.files[0]));
   document.getElementById("sm-list").addEventListener("click",smListClick);
+  document.getElementById("sm-clear").onclick=async e=>{
+    const b=e.currentTarget;
+    if(!extraStores.length){ smErr("지울 매장이 없어요."); return; }
+    if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent=`${extraStores.length}곳 모두 지우기 — 한 번 더 누르세요`; return; }
+    b.disabled=true; let n=0;
+    try{ for(const x of [...extraStores]){ await deleteDoc(doc(db,"storeNames",x.id)); n++; } showToast(`추가한 매장 ${n}곳을 지웠어요 (기본 매장 목록은 그대로)`); }
+    catch(err){ smErr("지우는 중 오류: "+escH(err.message)); }
+    delete b.dataset.armed; b.disabled=false; b.textContent="추가한 매장 모두 지우기";
+  };
   renderStoreMgrList();
 };
 function smErr(m){ const el=document.getElementById("sm-err"); if(el) el.innerHTML=m; }
