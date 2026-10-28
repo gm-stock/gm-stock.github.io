@@ -837,6 +837,10 @@ function startData(){
     orders=snap.docs.map(d=>({...d.data(),id:d.id}));
     renderOrders();
   },err=>{console.error(err);}));
+  // 추가 매장 목록 (매장명 자동완성)
+  dataUnsubs.push(onSnapshot(collection(db,"storeNames"),snap=>{
+    applyExtraStores(snap.docs.map(d=>(d.data()||{}).name));
+  },err=>console.error("추가 매장 목록을 불러오지 못했어요",err)));
   // 시즌 배송 · 배송 이슈 (접수가 열린 시즌이 있을 때만 '배송 이슈' 탭이 열린다)
   dataUnsubs.push(onSnapshot(collection(db,"shipments"),snap=>{
     shipments=snap.docs.map(d=>({...d.data(),id:d.id}));
@@ -1325,6 +1329,13 @@ function showLateOrderModal(shipDate){
 
 // ── 매장명 자동완성 데이터 ──
 const STORE_LIST = ["하우스 성수 _ KR", "하우스 도산 _ KR", "신사 FS _ KR", "홍대 FS _ KR", "롯데월드타워 (잠실) _ KR", "신세계 스타필드 (하남) _ KR", "롯데 (동탄) _ KR", "현대 (여의도) _ KR", "롯데 (명동) _ KR", "롯데 (서면) _ KR", "신세계 (센텀) _ KR", "신세계 (대구) _ KR", "신세계 (경기) _ KR", "신세계 (의정부) _ KR", "신세계 (명동) _ KR", "신세계 (강남) _ KR", "신세계 (대전) _ KR", "신세계 (광주) _ KR", "현대 (무역) _ KR", "현대 (대구) _ KR", "현대 (판교) _ KR", "갤러리아 (광교) _ KR", "갤러리아 (압구정) _ KR", "롯데 (잠실) _ KR", "신세계 (천안아산) _ KR", "현대 (압구정) _ KR", "갤러리아 (대전) _ KR", "현대 (목동) _ KR", "롯데 소공 면세 _ KR", "롯데 월드타워 면세 _ KR", "신세계 명동 면세 _ KR", "현대 면세 (인천공항 T1) _ KR", "신라 면세 (인청공항 T2) _ KR", "신라 서울 면세 _ KR", "신라 제주 면세 _ KR", "롯데 제주 면세 _ KR", "HAUS SHANGHAI _ CN", "TAIKOO-S BEIJING _ CN", "TAIKOO CHENGDU _ CN", "HANGZHOU TOWER _ CN", "DEJI NANJING _ CN", "SKP BEIJING _ CN", "HANKYU NINGBO _ CN", "TAIKOOLI SHANGHAI _ CN", "SKP CHENGDU _ CN", "MIXC XIAMEN _ CN", "PC GUANGZHOU _ CN", "IFC SHANGHAI _ CN", "TAIKOO GUANGZHOU _ CN", "SKP XIAN _ CN", "MIXC SHENYANG _ CN", "CHANGSHA IFS _ CN", "HANGZHOU MIXC _ CN", "HAUS SHENZHEN _ CN", "HAINAN SANYA _ CN", "CHONGQING MIXC _ CN", "SHANGHAI XINTIANDI _ CN", "SHANGHAI OFFICE _ CN", "NEWYORK _ USA", "LA COSTAMESA _ USA", "LA FS _ USA", "SAN JOSE _ USA", "HOUSTON _ USA", "NEWJERSEY _ USA", "LAS VEGAS _ USA", "USE OFFICE _ USA", "TORONTO _ CANADA", "ION _ SG", "MBS _ SG", "HABOUR CITY _ HK", "CAUSEWAY _ HK", "BREEZE TAIWAN _ TW", "THAICHUNG _ TW", "THE DUBAI MALL _ DUBAI", "SYDNEY AIR _ AUS", "MELBOURNE _ AUS", "DAVID JONES _ AUS", "BLUEBELL OFFICE _ AUS", "SELFIDGE LONDON _ UK", "10CC _ ITALY", "EMQUARTIER _ THAI", "SIAM-PARAGON _ THAI", "ICON SIAM _ THAI", "SHANGRI-LA _ PHILIPPINES", "TRX _ MAL", "KLCC _ MAL", "OSAKA HANKYU _ JP", "TOKYO AOYAMA _ JP", "TOKYO HANKYU _ JP", "TOKYO GINZA _ JP", "TOKYO HARAJUKU _ JP", "OSAKA PARCO _ JP", "PARIS _ FR"];
+// 관리자 '매장 목록 관리'에서 추가한 매장(Firestore storeNames)을 기본 목록 뒤에 합친다 (자동완성용)
+const STORE_BASE=[...STORE_LIST];
+function applyExtraStores(list){
+  const names=[...STORE_BASE];
+  list.forEach(n=>{ if(n&&!names.includes(n)) names.push(n); });
+  STORE_LIST.length=0; STORE_LIST.push(...names);
+}
 
 function initStoreAutocomplete(inputId){
   const input = document.getElementById(inputId);

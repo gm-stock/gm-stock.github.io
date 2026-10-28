@@ -344,3 +344,14 @@ test("배송 이슈: 매장은 접수 후 수정·삭제 불가, 담당자는 �
   await assertFails(deleteDoc(doc(manager(), "claims", "c1")));
   await assertSucceeds(deleteDoc(doc(owner(), "claims", "c1")));
 });
+test("추가 매장 목록: 매장·담당자는 보기만, 추가·수정·삭제는 최고관리자만", async () => {
+  const S = { name: "NEW STORE SEOUL _ KR", aliases: ["뉴스토어 서울"] };
+  await assertSucceeds(setDoc(doc(owner(), "storeNames", "n1"), S));
+  await assertSucceeds(getDoc(doc(store(), "storeNames", "n1")));
+  await assertSucceeds(getDocs(collection(manager(), "storeNames")));
+  await assertFails(getDoc(doc(anon(), "storeNames", "n1")));
+  await assertFails(setDoc(doc(store(), "storeNames", "n2"), S));
+  await assertFails(setDoc(doc(manager(), "storeNames", "n2"), S));
+  await assertFails(deleteDoc(doc(manager(), "storeNames", "n1")));
+  await assertSucceeds(deleteDoc(doc(owner(), "storeNames", "n1")));
+});

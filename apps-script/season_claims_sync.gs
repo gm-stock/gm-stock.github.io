@@ -26,6 +26,12 @@ function ss_setup() {
 }
 
 function ss_syncSeasonSheets() {
+  // 예약 실행이 겹치면(앞 실행이 아직 안 끝났으면) 이번 차례는 건너뛴다
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return;
+  try { ss_syncSeasonSheetsInner_(); } finally { lock.releaseLock(); }
+}
+function ss_syncSeasonSheetsInner_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ships = ss_list_('shipments', null);
   // 사진(용량이 큼)은 빼고 필요한 칸만 받는다
@@ -57,26 +63,45 @@ function ss_syncSeasonSheets() {
     c.type || '', Number(c.qty) || 0, Number(c.shipped) || 0, c.reason || '', c.reporter || '', c.status || '',
     c.handledAt ? Utilities.formatDate(new Date(c.handledAt), 'Asia/Seoul', 'yyyy-MM-dd HH:mm') : '', c.handler || ''
   ]);
-  ss_write_(ss, SS_TAB_CLAIM,
+  const claimChanged = ss_write_(ss, SS_TAB_CLAIM,
     ['접수일시', '시즌', '매장', '컬렉션', '품목', '옵션', '유형', '재요청 수량', '배송 수량', '사유', '접수자', '처리 상태', '처리일시', '처리자'],
     claimRows);
   // 처리 상태 색 (검토중 주황 / 재발송 예정·완료 초록 / 반려 빨강)
   const sh = ss.getSheetByName(SS_TAB_CLAIM);
-  if (claimRows.length) {
+  if (claimChanged && claimRows.length) {
     const colors = claimRows.map(r => [r[11] === '검토중' ? '#fdebd9' : (r[11] === '반려' ? '#f8d7da' : '#e3f1df')]);
-    sh.getRange(2, 12, claimRows.length, 1).setBackgrounds(colors);
+    ss_retry_(() => sh.getRange(2, 12, claimRows.length, 1).setBackgrounds(colors));
   }
 }
 
 // 시트 탭을 비우고 머리글 + 내용을 한 번에 쓴다
+// - 내용이 지난번과 같으면 아무것도 하지 않는다 (5분마다 돌아도 시트에 부담이 없게)
+// - 시트가 바빠서 시간 초과가 나면 잠깐 쉬었다가 최대 3번까지 다시 시도한다
 function ss_write_(ss, name, header, rows) {
+  const props = PropertiesService.getScriptProperties();
+  const key = 'ss_hash_' + name;
+  const hash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify([header, rows])));
   let sh = ss.getSheetByName(name);
-  if (!sh) sh = ss.insertSheet(name);
-  sh.clearContents();
-  sh.clearFormats();
-  sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold').setBackground('#111111').setFontColor('#ffffff');
-  if (rows.length) sh.getRange(2, 1, rows.length, header.length).setValues(rows);
-  sh.setFrozenRows(1);
+  if (sh && props.getProperty(key) === hash) return false;
+  ss_retry_(() => {
+    if (!sh) { sh = ss.insertSheet(name); }
+    else { sh.clearContents(); sh.clearFormats(); }
+    sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold').setBackground('#111111').setFontColor('#ffffff');
+    if (rows.length) sh.getRange(2, 1, rows.length, header.length).setValues(rows);
+    sh.setFrozenRows(1);
+    SpreadsheetApp.flush();
+  });
+  props.setProperty(key, hash);
+  return true;
+}
+function ss_retry_(fn) {
+  for (let i = 0; i < 3; i++) {
+    try { return fn(); }
+    catch (e) {
+      if (i === 2 || !/timed out|시간|Service/i.test(String(e))) throw e;
+      Utilities.sleep(5000 * (i + 1));
+    }
+  }
 }
 
 function ss_deadline_(openDate) {

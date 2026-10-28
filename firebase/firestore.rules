@@ -90,6 +90,14 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // ── 추가 매장 목록 + 엑셀에서 쓰는 이름(별칭) ──
+    // 코드의 기본 매장 목록(STORE_LIST)에 더해, 관리자 화면 '매장 목록 관리'에서 추가한 매장.
+    // 문서: name("매장명 _ 국가"), aliases(엑셀에서 쓰는 다른 이름 목록)
+    match /storeNames/{storeId} {
+      allow read: if isStaff();
+      allow write: if isOwner();
+    }
+
     // ── 배송 이슈 접수 (파손·불량·누락) ──
     // 매장 계정: 접수가 열린 시즌에 '검토중'으로만 만들 수 있고, 만든 뒤에는 고칠 수 없다.
     // 담당자·최고관리자: 처리 상태 변경(재발송 예정 등). 삭제는 최고관리자만.
