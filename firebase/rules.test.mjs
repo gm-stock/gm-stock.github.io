@@ -327,7 +327,7 @@ test("배송 이슈: 매장은 열린 시즌에 검토중으로만 접수", asyn
   await assertFails(setDoc(doc(store(), "claims", "c2"), { ...CLAIM, shipmentId: "s2" }));          // 닫힌 시즌
   await assertFails(setDoc(doc(store(), "claims", "c3"), { ...CLAIM, shipmentId: "none" }));        // 없는 시즌
   await assertFails(setDoc(doc(store(), "claims", "c4"), { ...CLAIM, status: "재발송 예정" }));
-  await assertFails(setDoc(doc(store(), "claims", "c5"), { ...CLAIM, qty: 4 }));                     // 배송 수량 초과
+  await assertSucceeds(setDoc(doc(store(), "claims", "c5"), { ...CLAIM, qty: 4 }));                  // 배송 수량보다 많아도 접수 가능
   await assertFails(setDoc(doc(store(), "claims", "c6"), { ...CLAIM, qty: 0 }));
   await assertFails(setDoc(doc(store(), "claims", "c7"), { ...CLAIM, type: "기타" }));
   await assertFails(setDoc(doc(store(), "claims", "c8"), { ...CLAIM, photos: ["a", "b", "c", "d"] }));
