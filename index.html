@@ -1478,12 +1478,13 @@ function clStoreGroups(stores){
     .map(c=>[c,groups[c].sort((a,b)=>pos(a)-pos(b)||a.localeCompare(b))]);
 }
 function clItemHTML(it){
-  const k=clKey(it), st=clSel[k], done=clClaimed(clStore,it.itemId,it.optName), left=Math.max(0,it.qty-done);
-  const name=`<div class="cl-name">${clEsc(it.itemName)}${it.optName?`<small>${clEsc(tOpt(it.optName))}</small>`:""}${done?`<small>${t("cl_already",{n:done})}</small>`:""}${!left?`<small>${t("cl_none_left")}</small>`:""}</div>`;
-  const head=`<div class="cl-item-head ${left?"":"cl-off"}" data-k="${clEsc(k)}">
-    <input type="checkbox" ${st?"checked":""} ${left?"":"disabled"} tabindex="-1" aria-hidden="true">${name}
+  // 재요청 수량은 배송 수량과 상관없이 접수할 수 있다 (이미 접수한 수량은 참고로만 보여준다)
+  const k=clKey(it), st=clSel[k], done=clClaimed(clStore,it.itemId,it.optName);
+  const name=`<div class="cl-name">${clEsc(it.itemName)}${it.optName?`<small>${clEsc(tOpt(it.optName))}</small>`:""}${done?`<small>${t("cl_already",{n:done})}</small>`:""}</div>`;
+  const head=`<div class="cl-item-head" data-k="${clEsc(k)}">
+    <input type="checkbox" ${st?"checked":""} tabindex="-1" aria-hidden="true">${name}
     <div class="cl-qty">${t("cl_shipped",{n:it.qty})}</div></div>`;
-  if(!st||!left) return `<div class="cl-item">${head}</div>`;
+  if(!st) return `<div class="cl-item">${head}</div>`;
   const needPhoto=st.type==="파손"||st.type==="불량";
   return `<div class="cl-item on">${head}
     <div class="cl-form" data-k="${clEsc(k)}">
@@ -1496,8 +1497,7 @@ function clItemHTML(it){
         <textarea class="field-input" data-f="reason" rows="2" placeholder="${clEsc(t("cl_reason_ph"))}">${clEsc(st.reason)}</textarea></div>
       <div class="cl-row" style="align-items:flex-end">
         <label class="cl-field" style="flex:0 1 140px"><span class="cl-label">${t("cl_qty")}</span>
-          <input class="field-input" data-f="qty" type="number" min="1" max="${left}" value="${st.qty}" inputmode="numeric"></label>
-        <div class="cl-hint">${t("cl_qty_max",{n:left})}</div>
+          <input class="field-input" data-f="qty" type="number" min="1" value="${st.qty}" inputmode="numeric"></label>
       </div>
     </div></div>`;
 }
@@ -1508,11 +1508,11 @@ function clProblems(){
   const out=[];
   keys.forEach(k=>{
     const it=(ship.stores[clStore]||[]).find(x=>clKey(x)===k); if(!it) return;
-    const st=clSel[k], left=it.qty-clClaimed(clStore,it.itemId,it.optName), name=it.itemName;
+    const st=clSel[k], name=it.itemName;
     if(!st.type) out.push(t("cl_e_type",{name}));
     if((st.type==="파손"||st.type==="불량")&&!st.photos.length) out.push(t("cl_e_photo",{name}));
     if(!st.reason.trim()) out.push(t("cl_e_reason",{name}));
-    if(!(st.qty>=1&&st.qty<=left)) out.push(t("cl_e_qty",{name,n:Math.max(0,left)}));
+    if(!(Number.isInteger(st.qty)&&st.qty>=1)) out.push(`${name}: ${t("ms_bad_qty")}`);
   });
   if(!clReporter.trim()) out.push(t("cl_e_reporter"));
   return out;

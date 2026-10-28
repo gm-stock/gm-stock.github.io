@@ -116,7 +116,7 @@ service cloud.firestore {
         && d.get("status", "") == "검토중"
         && d.get("type", "") in ["파손", "불량", "누락"]
         && d.get("qty", 0) is int && d.qty >= 1
-        && d.get("shipped", 0) is int && d.qty <= d.shipped
+        && d.get("shipped", 0) is int
         && d.get("photos", []) is list && d.get("photos", []).size() <= 3
         && exists(ship) && get(ship).data.get("open", false) == true;
     }
