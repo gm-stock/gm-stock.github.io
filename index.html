@@ -1403,7 +1403,11 @@ const CL_STATUS_KEY={"검토중":"cs_review","재발송 예정":"cs_resend","재
 function clDeadline(openDate){ const d=new Date(openDate+"T23:59:59+09:00"); d.setDate(d.getDate()+CL_DAYS); return d; }
 function clFmt(d){ const k=new Date(d.getTime()+9*3600e3); return `${k.getUTCFullYear()}-${String(k.getUTCMonth()+1).padStart(2,"0")}-${String(k.getUTCDate()).padStart(2,"0")}`; }
 function clEsc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-function openShipments(){ return shipments.filter(s=>s.open); }
+// 접수 중인 시즌: 최근 등록한 시즌이 먼저 오도록
+function openShipments(){
+  const ts=s=>s.createdAt?.toMillis?s.createdAt.toMillis():(s.createdAt?.seconds||0)*1000;
+  return shipments.filter(s=>s.open).sort((a,b)=>ts(b)-ts(a));
+}
 
 function updateClaimTab(){
   const on=openShipments().length>0;
