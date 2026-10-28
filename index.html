@@ -1434,7 +1434,7 @@ function renderClaim(){
         <select id="cl-season" class="field-input">${list.map(s=>`<option value="${clEsc(s.id)}" ${s.id===clShipId?"selected":""}>${clEsc(s.title)}</option>`).join("")}</select></label>`:""}
       <label class="cl-field"><span class="cl-label">${t("cl_store")}</span>
         <select id="cl-store" class="field-input"><option value="">${t("cl_store_ph")}</option>
-        ${stores.map(n=>`<option ${n===clStore?"selected":""}>${clEsc(n)}</option>`).join("")}</select></label>
+        ${clStoreGroups(stores).map(([cc,names])=>`<optgroup label="${clEsc(cc||"-")}">${names.map(n=>`<option ${n===clStore?"selected":""}>${clEsc(n)}</option>`).join("")}</optgroup>`).join("")}</select></label>
     </div>
     <div class="cl-dl ${expired?"cl-bad":""}">${expired?t("cl_expired",{d:clFmt(dl)}):t("cl_deadline",{d:clFmt(dl)})}</div>
   </div>
@@ -1466,6 +1466,17 @@ function renderClaim(){
   clValidate();
 }
 
+// 매장 선택 목록: 국가(매장명 끝의 " _ KR" 등)별로 묶는다. 국가 순서·국가 안 순서는 매장 목록(STORE_LIST) 순서를 따른다.
+function clStoreGroups(stores){
+  const ccOf=n=>((String(n).match(/_\s*([A-Za-z]+)\s*$/)||[])[1]||"").toUpperCase();
+  const order=[]; STORE_LIST.forEach(n=>{ const c=ccOf(n); if(c&&!order.includes(c)) order.push(c); });
+  const pos=n=>{ const i=STORE_LIST.indexOf(n); return i<0?1e9:i; };
+  const groups={};
+  stores.forEach(n=>{ (groups[ccOf(n)]=groups[ccOf(n)]||[]).push(n); });
+  const rank=c=>c===""?2e9:(order.indexOf(c)<0?1e9:order.indexOf(c));
+  return Object.keys(groups).sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b))
+    .map(c=>[c,groups[c].sort((a,b)=>pos(a)-pos(b)||a.localeCompare(b))]);
+}
 function clItemHTML(it){
   const k=clKey(it), st=clSel[k], done=clClaimed(clStore,it.itemId,it.optName), left=Math.max(0,it.qty-done);
   const name=`<div class="cl-name">${clEsc(it.itemName)}${it.optName?`<small>${clEsc(tOpt(it.optName))}</small>`:""}${done?`<small>${t("cl_already",{n:done})}</small>`:""}${!left?`<small>${t("cl_none_left")}</small>`:""}</div>`;
