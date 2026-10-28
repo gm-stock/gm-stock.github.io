@@ -363,6 +363,7 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
 .ssn-empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7;border:1px dashed var(--line)}
 .ssn-sec{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--sub);margin:16px 0 6px}
 .ssn-err{color:var(--low);font-size:12px;line-height:1.6}
+.s-table tr.dim td{opacity:.55}
 .ssn-map{border:1px solid var(--line);background:var(--bg);padding:10px;margin-bottom:8px}
 .ssn-map-h{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:13px;color:var(--ink);margin-bottom:6px}
 .ssn-map-h span{font-weight:400;color:var(--muted);font-size:11px}
@@ -2603,6 +2604,108 @@ window.confirmShipmentRegister=async()=>{
     showToast(`✅ ${title} 등록 완료 · 매장 ${Object.keys(stores).length}곳, 접수가 열렸어요`);
   }catch(e){ btn.disabled=false; btn.textContent="등록하고 접수 열기"; regErr("저장하지 못했어요: "+escH(e.message)); }
 };
+
+// ── 배송 이슈 집계 ──
+// 상태: 검토중 → 재발송 예정 → 재발송 완료 / 반려
+// '재발송 예정'으로 바꾸는 순간 재고에서 빼고, 재발송 예정·완료에서 검토중·반려로 되돌리면 다시 채운다.
+const CLAIM_STATUS=["검토중","재발송 예정","재발송 완료","반려"];
+const CLAIM_HELD=["재발송 예정","재발송 완료"];
+const CLAIM_TYPE_LABEL={"파손":"배송 중 파손","불량":"제품 불량","누락":"누락·수량 부족"};
+let claimTypeFilter="전체";
+
+function stockOf(itemId,optName){
+  const it=items.find(i=>i.id===itemId); if(!it) return null;
+  if(optName&&it.options?.length){ const o=it.options.find(x=>x.name===optName); return o?(o.quantity||0):null; }
+  return it.quantity||0;
+}
+function renderClaimsArea(ship){
+  const area=document.getElementById("ssn-claims-area"); if(!area) return;
+  const all=claims.filter(c=>c.shipmentId===ship.id);
+  const rows=all.filter(c=>claimTypeFilter==="전체"||c.type===claimTypeFilter);
+  const live=rows.filter(c=>c.status!=="반려");
+  const kpi=[["접수 건수",rows.length,""],["재요청 합계 (반려 제외)",live.reduce((a,c)=>a+(c.qty||0),0),""],
+    ["접수 매장",new Set(rows.map(c=>c.storeName)).size,""],["검토 대기",rows.filter(c=>c.status==="검토중").length,"acc"]];
+  const chips=["전체","파손","불량","누락"].map(t=>{
+    const n=t==="전체"?all.length:all.filter(c=>c.type===t).length;
+    return `<button type="button" class="fbtn ${claimTypeFilter===t?"on":""}" onclick="window.setClaimType('${t}')">${t==="전체"?"전체":CLAIM_TYPE_LABEL[t]}<span class="st-n">${n}</span></button>`;
+  }).join("");
+  // 품목별 재요청 합계 (재발송 준비용, 반려 제외)
+  const agg={};
+  live.forEach(c=>{ const k=c.itemId+"|"+(c.optName||"");
+    const a=agg[k]||(agg[k]={name:c.itemName,opt:c.optName||"",coll:c.collection||"",파손:0,불량:0,누락:0,total:0,itemId:c.itemId});
+    a[c.type]=(a[c.type]||0)+c.qty; a.total+=c.qty; });
+  const aggRows=Object.values(agg).sort((a,b)=>b.total-a.total).map(a=>{
+    const st=stockOf(a.itemId,a.opt);
+    return `<tr><td class="c-coll">${escH(a.coll)}</td><td class="c-name"><b>${escH(a.name)}</b>${a.opt?`<div class="c-sub">${escH(a.opt)}</div>`:""}</td>
+      <td>${a.파손||"-"}</td><td>${a.불량||"-"}</td><td>${a.누락||"-"}</td><td class="c-qty">${a.total}</td>
+      <td class="c-qty ${st!==null&&st<a.total?"lowtxt":""}">${st===null?"-":st}</td></tr>`;
+  }).join("");
+  const listRows=rows.map(c=>{
+    const d=c.createdAt?.toDate?c.createdAt.toDate():null;
+    const date=d?`${d.getMonth()+1}/${d.getDate()}`:(c.date||"");
+    const photos=(c.photos||[]).map((p,i)=>`<img src="${p}" alt="사진 ${i+1}" data-claim="${escAttr(c.id)}" data-pi="${i}" style="width:34px;height:34px;object-fit:cover;cursor:pointer;margin-right:3px;border:1px solid var(--line)">`).join("");
+    return `<tr class="${c.status==="반려"||c.status==="재발송 완료"?"dim":""}">
+      <td style="white-space:nowrap">${escH(date)}</td>
+      <td class="c-name"><b>${escH(c.storeName)}</b><div class="c-sub">${escH(c.reporter||"")}</div></td>
+      <td class="c-name">${escH(c.itemName)}${c.optName?`<div class="c-sub">${escH(c.optName)}</div>`:""}</td>
+      <td><span class="ssn-pill" style="border-color:var(--accent);color:var(--accent)">${escH(c.type)}</span></td>
+      <td class="c-qty">${c.qty}<span class="unit"> / ${c.shipped}</span></td>
+      <td style="min-width:180px;white-space:normal;font-size:12px">${escH(c.reason)}</td>
+      <td style="white-space:nowrap">${photos||'<span class="c-sub">-</span>'}</td>
+      <td><select class="field-input" style="margin:0;padding:6px 8px;font-size:12px;width:auto" data-claim-status="${escAttr(c.id)}" aria-label="처리 상태">
+        ${CLAIM_STATUS.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></td>
+    </tr>`;
+  }).join("");
+  area.innerHTML=`<div class="adm-kpis">${kpi.map(([l,v,cl])=>`<div class="kpi ${cl}" style="cursor:default"><span class="l">${l}</span><span class="v">${v}</span></div>`).join("")}</div>
+    <div class="st-chips">${chips}</div>
+    <div class="ssn-sec">품목별 재요청 합계 (재발송 준비용 · 반려 제외)</div>
+    ${aggRows?`<div class="s-table-wrap"><table class="s-table" style="min-width:520px"><thead><tr><th>컬렉션</th><th>품목</th><th>파손</th><th>불량</th><th>누락</th><th>합계</th><th>현재 재고</th></tr></thead><tbody>${aggRows}</tbody></table></div>`
+      :`<div class="ssn-empty">아직 접수된 배송 이슈가 없어요.</div>`}
+    <div class="ssn-sec">접수 목록 — 상태를 '재발송 예정'으로 바꾸면 재고에서 빠져요</div>
+    ${listRows?`<div class="s-table-wrap"><table class="s-table" style="min-width:820px"><thead><tr><th>접수일</th><th>매장 · 접수자</th><th>품목</th><th>유형</th><th>요청/배송</th><th>사유</th><th>사진</th><th>상태</th></tr></thead><tbody>${listRows}</tbody></table></div>`
+      :`<div class="ssn-empty">이 조건의 접수 내역이 없어요.</div>`}`;
+}
+window.setClaimType=t=>{ claimTypeFilter=t; renderSeason(); };
+
+document.getElementById("ssn-claims-area").addEventListener("click",e=>{
+  const img=e.target.closest("img[data-claim]"); if(!img) return;
+  const c=claims.find(x=>x.id===img.dataset.claim); if(!c) return;
+  window.viewPhoto(c.photos[+img.dataset.pi],c.photos);
+});
+document.getElementById("ssn-claims-area").addEventListener("change",e=>{
+  const sel=e.target.closest("select[data-claim-status]"); if(!sel) return;
+  setClaimStatus(sel.dataset.claimStatus,sel.value,sel);
+});
+
+async function setClaimStatus(id,newStatus,sel){
+  const c=claims.find(x=>x.id===id); if(!c||c.status===newStatus) return;
+  const wasHeld=CLAIM_HELD.includes(c.status), willHold=CLAIM_HELD.includes(newStatus);
+  const line={items:[{itemId:c.itemId,optName:c.optName||null,qty:c.qty}]};
+  let note="";
+  try{
+    if(!wasHeld&&willHold){
+      const st=stockOf(c.itemId,c.optName);
+      if(st===null){ showToast("재고에서 이 품목을 찾지 못해 차감할 수 없어요","var(--low)"); sel.value=c.status; return; }
+      if(st<c.qty){ showToast(`재고가 ${c.qty-st}개 부족해요 (현재 ${st}개). 재고를 먼저 채워주세요.`,"var(--low)"); sel.value=c.status; return; }
+      await adjustStock(line,-1); note=" 재고에서 차감했어요."; logClaimStock(c,-c.qty,st);
+    }else if(wasHeld&&!willHold){
+      const st=stockOf(c.itemId,c.optName);
+      await adjustStock(line,+1); note=" 재고를 되돌렸어요."; logClaimStock(c,+c.qty,st);
+    }
+    await setDoc(doc(db,"claims",id),{status:newStatus,handledAt:new Date().toISOString(),handler:auth.currentUser?.email||""},{merge:true});
+    showToast(`🔄 ${c.storeName} · ${c.itemName} → ${newStatus}.${note}`);
+  }catch(err){ sel.value=c.status; showToast("오류: "+err.message,"var(--low)"); }
+}
+// 재고 변동 기록 (기록 권한은 최고관리자만 있어서, 담당자가 처리하면 기록은 건너뛴다)
+async function logClaimStock(c,diff,before){
+  if(userRole!=="owner"||before===null) return;
+  try{
+    const now=new Date();
+    await addDoc(collection(db,"stockLogs"),{itemId:c.itemId,itemName:c.itemName,collection:c.collection||"",optName:c.optName||"",
+      before,after:Math.max(0,before+diff),diff,type:diff<0?"배송이슈 재발송":"배송이슈 재발송 취소",
+      date:todayDate(),time:nowTime(),createdAt:serverTimestamp()});
+  }catch(e){ console.error("재고 기록 실패",e); }
+}
 
 // ── 역할별 기능 제한 ──
 // 담당자(manager)는 재고·프로그램 관리 기능을 쓸 수 없다. 버튼이 숨겨져 있어도 함수 단계에서 한 번 더 막는다.
