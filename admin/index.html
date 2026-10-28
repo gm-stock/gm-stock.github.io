@@ -352,6 +352,7 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
 .ssn-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .ssn-bar select{flex:1 1 220px;min-width:0;margin:0}
 .ssn-add{padding:10px 14px;font-weight:900;font-size:13px;letter-spacing:.04em;background:var(--ink);color:var(--bg);border:0;cursor:pointer;white-space:nowrap}
+.ssn-add-sub{background:var(--surface);color:var(--ink);border:1px solid var(--ink)}
 .ssn-card{background:var(--surface);border:1px solid var(--line);padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:12px;color:var(--sub)}
 .ssn-card b{color:var(--ink);font-weight:800}
 .ssn-card .ssn-title{font-size:15px;font-weight:900;color:var(--ink);letter-spacing:.03em;flex-basis:100%}
@@ -491,6 +492,7 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
   <div id="tab-season" class="tab-pane"><div class="page-scroll">
     <div class="ssn-bar">
       <select id="ssn-select" class="field-input" onchange="window.selectShipment(this.value)" aria-label="시즌 선택"></select>
+      <button type="button" class="ssn-add ssn-add-sub owner-only" onclick="window.openStoreManager()">매장 목록 관리</button>
       <button type="button" class="ssn-add owner-only" onclick="window.openShipmentRegister()">＋ 새 시즌 등록</button>
     </div>
     <div id="ssn-info"></div>
@@ -614,6 +616,11 @@ function startData(){
     claims=snap.docs.map(d=>({...d.data(),id:d.id}));
     renderSeason();
   },err=>console.error("배송 이슈를 불러오지 못했어요",err)));
+  // 추가 매장 목록 + 엑셀에서 쓰는 이름
+  dataUnsubs.push(onSnapshot(collection(db,"storeNames"),snap=>{
+    extraStores=snap.docs.map(d=>({...d.data(),id:d.id})).filter(x=>x.name);
+    applyExtraStores(); renderStoreMgrList();
+  },err=>console.error("추가 매장 목록을 불러오지 못했어요",err)));
   // 발주자 전체 이름 (관리자만 읽을 수 있음)
   dataUnsubs.push(onSnapshot(collection(db,"orderContacts"),snap=>{
     ordererNames={}; snap.docs.forEach(d=>{ ordererNames[d.id]=(d.data()||{}).name||""; });
@@ -2388,7 +2395,7 @@ const SKIP_ROW=/합계|총계|소계|TOTAL|SUBTOTAL|^SUM$/i;
 function storeKey(s){ return String(s||"").toUpperCase().replace(/\s*_\s*[A-Z]+\s*$/,"").replace(/[\s\-_().·]/g,""); }
 function matchStore(raw){
   const k=storeKey(raw); if(!k) return null;
-  return STORE_LIST.find(n=>storeKey(n)===k)||null;
+  return STORE_LIST.find(n=>storeKey(n)===k)||storeAlias[k]||null;
 }
 function itemKey(s){ return String(s||"").toUpperCase().replace(/\s+/g," ").trim(); }
 function numOf(v){ if(typeof v==="number") return v; const n=Number(String(v||"").replace(/,/g,"").trim()); return isFinite(n)?n:NaN; }
@@ -2469,7 +2476,7 @@ function readShipExcel(file){
         if(p&&p.rows.length>bestN){ bestN=p.rows.length; bestSheet=sn; }
       });
       reg.sheetNames=reg.wb.SheetNames;
-      if(!bestSheet){ document.getElementById("ssn-reg-body").innerHTML=""; regErr("매장명 열을 찾지 못했어요. 매장명이 매장 목록(STORE_LIST)과 같은 이름인지 확인해 주세요."); return; }
+      if(!bestSheet){ document.getElementById("ssn-reg-body").innerHTML=""; regErr("매장명 열을 찾지 못했어요. 매장명이 매장 목록과 같은 이름인지 확인하거나, '매장 목록 관리'에서 엑셀 이름을 등록해 주세요."); return; }
       useShipSheet(bestSheet);
     }catch(err){ regErr("엑셀을 읽지 못했어요: "+err.message); }
   };
@@ -2605,6 +2612,165 @@ window.confirmShipmentRegister=async()=>{
   }catch(e){ btn.disabled=false; btn.textContent="등록하고 접수 열기"; regErr("저장하지 못했어요: "+escH(e.message)); }
 };
 
+// ── 매장 목록 관리 (추가 매장 + 엑셀에서 쓰는 이름) ──
+// 코드의 기본 목록(STORE_LIST)은 그대로 두고, Firestore storeNames 에 저장한 매장을 합쳐서 쓴다.
+// storeNames 문서: name("매장명 _ 국가"), aliases(엑셀에서 쓰는 다른 이름들). 기본 목록에 있는 매장에도 별칭만 붙일 수 있다.
+const STORE_BASE=[...STORE_LIST];
+let extraStores=[];            // [{id,name,aliases}]
+let storeAlias={};             // storeKey(별칭) → 매장명
+function applyExtraStores(){
+  const names=[...STORE_BASE];
+  extraStores.forEach(s=>{ if(s.name&&!names.includes(s.name)) names.push(s.name); });
+  STORE_LIST.length=0; STORE_LIST.push(...names);
+  storeAlias={};
+  extraStores.forEach(s=>(s.aliases||[]).forEach(a=>{ const k=storeKey(a); if(k) storeAlias[k]=s.name; }));
+}
+function storeCountries(){
+  const set=new Set(); STORE_LIST.forEach(n=>{ const m=n.match(/_\s*([A-Z]+)\s*$/); if(m) set.add(m[1]); }); return [...set];
+}
+function fullStoreName(name,cc){ return `${String(name).trim().toUpperCase().replace(/\s+/g," ")} _ ${String(cc).trim().toUpperCase()}`; }
+function storeDocId(full){ return full.replace(/[\/\s]+/g,"_").slice(0,140); }
+function splitAliases(v){ return String(v||"").split(/[,\n]/).map(x=>x.trim()).filter(Boolean); }
+
+// 별칭/매장 저장: 같은 매장 문서가 있으면 별칭을 합친다
+async function saveStoreEntry(full,aliases){
+  const ex=extraStores.find(s=>s.name===full);
+  const merged=[...new Set([...(ex?.aliases||[]),...aliases.filter(a=>storeKey(a)!==storeKey(full))])];
+  await setDoc(doc(db,"storeNames",ex?.id||storeDocId(full)),{name:full,aliases:merged,updatedAt:serverTimestamp()},{merge:true});
+}
+
+window.openStoreManager=()=>{
+  const modal=document.createElement("div"); modal.className="modal-bg"; modal.id="store-mgr-modal";
+  modal.innerHTML=`<div class="modal-sheet" style="max-width:640px">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🏬 매장 목록 관리</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">
+      새 매장을 추가하거나, 배분표 엑셀에 다른 이름으로 적히는 매장에 <b style="color:var(--sub)">엑셀에서 쓰는 이름</b>을 붙여두면 시즌 등록 때 자동으로 맞춰져요.<br>
+      매장명은 <b style="color:var(--sub)">매장명 _ 국가</b> 형태로 저장돼요. 이미 있는 매장명을 넣으면 그 매장에 이름만 더해져요.</div>
+    <div class="ssn-map">
+      <div class="ssn-map-h">한 곳씩 추가</div>
+      <div class="ssn-line">
+        <input id="sm-name" placeholder="매장명 (예: NEW STORE SEOUL)" style="flex:2 1 180px" autocomplete="off">
+        <input id="sm-cc" placeholder="국가" list="sm-cc-list" style="width:90px" autocomplete="off">
+        <datalist id="sm-cc-list">${storeCountries().map(c=>`<option value="${escAttr(c)}">`).join("")}</datalist>
+      </div>
+      <div class="ssn-line"><input id="sm-alias" placeholder="엑셀에서 쓰는 이름 (여러 개면 쉼표로 구분, 없으면 비워두기)" style="flex:1 1 100%"></div>
+      <div class="ssn-line"><span id="sm-preview" style="font-size:12px;color:var(--sub);flex:1"></span><button type="button" class="ssn-mini" id="sm-add">추가</button></div>
+    </div>
+    <div class="ssn-map">
+      <div class="ssn-map-h">엑셀로 한 번에 <span>엑셀 이름 | 매장명 | 국가</span></div>
+      <div class="ssn-line">
+        <label class="ssn-mini" style="cursor:pointer">📂 엑셀 선택<input type="file" id="sm-file" accept=".xlsx,.xls" hidden></label>
+        <button type="button" class="ssn-mini" id="sm-tpl">빈 양식 내려받기</button>
+      </div>
+      <div id="sm-bulk"></div>
+    </div>
+    <div class="ssn-sec">추가한 매장 · 엑셀 이름</div>
+    <div id="sm-list"></div>
+    <div id="sm-err" class="ssn-err"></div>
+    <button class="btn-secondary-sm" onclick="document.getElementById('store-mgr-modal').remove()">닫기</button>
+  </div>`;
+  modal.addEventListener("click",e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  const prev=()=>{ const n=document.getElementById("sm-name").value.trim(), c=document.getElementById("sm-cc").value.trim();
+    const full=n&&c?fullStoreName(n,c):"";
+    document.getElementById("sm-preview").textContent=full?(STORE_LIST.includes(full)?`이미 있는 매장 → ${full} 에 엑셀 이름만 더해요`:`새 매장 → ${full}`):""; };
+  ["sm-name","sm-cc"].forEach(id=>document.getElementById(id).addEventListener("input",prev));
+  document.getElementById("sm-add").onclick=async()=>{
+    const n=document.getElementById("sm-name").value.trim(), c=document.getElementById("sm-cc").value.trim();
+    if(!n||!c){ smErr("매장명과 국가를 모두 입력해 주세요."); return; }
+    if(!/^[A-Za-z]+$/.test(c)){ smErr("국가는 영문 약자로 입력해 주세요 (예: KR, CN, USA)."); return; }
+    const full=fullStoreName(n,c), aliases=splitAliases(document.getElementById("sm-alias").value);
+    if(STORE_LIST.includes(full)&&!aliases.length){ smErr("이미 있는 매장이에요. 엑셀에서 쓰는 이름을 함께 넣어주세요."); return; }
+    try{ await saveStoreEntry(full,aliases); showToast(`✅ ${full} 저장했어요`);
+      ["sm-name","sm-cc","sm-alias"].forEach(id=>document.getElementById(id).value=""); prev(); smErr(""); }
+    catch(e){ smErr("저장하지 못했어요: "+escH(e.message)); }
+  };
+  document.getElementById("sm-tpl").onclick=()=>{
+    const ws=XLSX.utils.aoa_to_sheet([["엑셀 이름","매장명","국가"],["뉴스토어 서울","NEW STORE SEOUL","KR"],["HAUS SH","HAUS SHANGHAI","CN"]]);
+    ws["!cols"]=[{wch:24},{wch:28},{wch:8}];
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"매장 목록"); XLSX.writeFile(wb,"매장목록_양식.xlsx");
+  };
+  document.getElementById("sm-file").addEventListener("change",e=>readStoreExcel(e.target.files[0]));
+  document.getElementById("sm-list").addEventListener("click",smListClick);
+  renderStoreMgrList();
+};
+function smErr(m){ const el=document.getElementById("sm-err"); if(el) el.innerHTML=m; }
+function renderStoreMgrList(){
+  const el=document.getElementById("sm-list"); if(!el) return;
+  const list=[...extraStores].sort((a,b)=>a.name.localeCompare(b.name));
+  el.innerHTML=list.length?list.map(s=>`<div class="ssn-store" data-sid="${escAttr(s.id)}">
+      <span>${escH(s.name)}${STORE_BASE.includes(s.name)?' <em style="font-weight:400;color:var(--muted);font-style:normal">(기본 목록)</em>':""}
+        <div class="c-sub" style="font-weight:400">${(s.aliases||[]).length?"엑셀 이름: "+s.aliases.map(escH).join(", "):"엑셀 이름 없음"}</div></span>
+      <button type="button" class="ssn-mini" data-act="edit">엑셀 이름 수정</button>
+      <button type="button" class="ssn-mini" data-act="del" style="border-color:var(--low);color:var(--low)">${STORE_BASE.includes(s.name)?"별칭 삭제":"삭제"}</button>
+    </div>`).join(""):`<div style="font-size:12px;color:var(--muted)">아직 추가한 매장이 없어요.</div>`;
+}
+async function smListClick(e){
+  const b=e.target.closest("button[data-act]"); if(!b) return;
+  const row=b.closest("[data-sid]"), s=extraStores.find(x=>x.id===row.dataset.sid); if(!s) return;
+  if(b.dataset.act==="edit"){
+    if(row.querySelector(".sm-edit")) return;
+    const box=document.createElement("div"); box.className="ssn-line sm-edit"; box.style.flexBasis="100%";
+    box.innerHTML=`<input value="${escAttr((s.aliases||[]).join(", "))}" style="flex:1 1 200px" aria-label="엑셀 이름"><button type="button" class="ssn-mini">저장</button>`;
+    row.appendChild(box);
+    box.querySelector("button").onclick=async()=>{
+      try{ await setDoc(doc(db,"storeNames",s.id),{aliases:splitAliases(box.querySelector("input").value),updatedAt:serverTimestamp()},{merge:true}); showToast("엑셀 이름을 저장했어요"); }
+      catch(err){ smErr("저장하지 못했어요: "+escH(err.message)); }
+    };
+    return;
+  }
+  if(b.dataset.act==="del"){
+    if(!b.dataset.armed){ b.dataset.armed="1"; b.textContent="한 번 더 누르면 삭제"; return; }
+    try{ await deleteDoc(doc(db,"storeNames",s.id)); showToast(`${s.name} 삭제했어요 (이미 들어간 주문·배송 내역의 매장명은 그대로예요)`); }
+    catch(err){ smErr("삭제하지 못했어요: "+escH(err.message)); }
+  }
+}
+
+// 엑셀 일괄 등록: 머리글에서 '엑셀'/'매장'/'국가' 열을 찾는다. 매장명에 이미 " _ 국가"가 붙어 있으면 국가 칸은 비워도 된다.
+let smBulk=[];
+function readStoreExcel(file){
+  if(!file) return;
+  const fr=new FileReader();
+  fr.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:"array"});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:""});
+      let hr=rows.findIndex(r=>r.some(c=>/매장/.test(String(c))));
+      if(hr<0){ smErr("머리글 줄(엑셀 이름 | 매장명 | 국가)을 찾지 못했어요. 빈 양식을 내려받아 맞춰주세요."); return; }
+      const H=rows[hr].map(c=>String(c).trim());
+      const ai=H.findIndex(h=>/엑셀|별칭|ALIAS/i.test(h)), ni=H.findIndex(h=>/매장/.test(h)&&!/엑셀/.test(h)), ci=H.findIndex(h=>/국가|COUNTRY/i.test(h));
+      if(ni<0){ smErr("'매장명' 열을 찾지 못했어요."); return; }
+      const acc={}, errs=[];
+      rows.slice(hr+1).forEach((r,i)=>{
+        const name=String(r[ni]||"").trim(); if(!name) return;
+        const cc=ci>=0?String(r[ci]||"").trim():"";
+        let full;
+        if(/_\s*[A-Za-z]+\s*$/.test(name)&&!cc){ const m=name.match(/^(.*?)\s*_\s*([A-Za-z]+)\s*$/); full=fullStoreName(m[1],m[2]); }
+        else if(cc&&/^[A-Za-z]+$/.test(cc)) full=fullStoreName(name,cc);
+        else { errs.push(`${hr+i+2}번째 줄 '${name}': 국가가 비었거나 영문 약자가 아니에요`); return; }
+        (acc[full]=acc[full]||[]); const a=ai>=0?String(r[ai]||"").trim():""; if(a) acc[full].push(...splitAliases(a));
+      });
+      smBulk=Object.entries(acc).map(([full,aliases])=>({full,aliases,isNew:!STORE_LIST.includes(full)}));
+      const nNew=smBulk.filter(x=>x.isNew).length;
+      document.getElementById("sm-bulk").innerHTML=smBulk.length?`<div style="font-size:12px;color:var(--sub);margin:6px 0">새 매장 <b>${nNew}</b>곳 · 기존 매장에 엑셀 이름 추가 <b>${smBulk.length-nNew}</b>곳</div>
+        <div style="max-height:180px;overflow:auto;border:1px solid var(--line2);padding:4px 8px;font-size:12px">${smBulk.map(x=>`<div>${x.isNew?"＋ ":"· "}${escH(x.full)}${x.aliases.length?` <span class="c-sub">← ${x.aliases.map(escH).join(", ")}</span>`:""}</div>`).join("")}</div>
+        <div class="ssn-line" style="margin-top:6px"><button type="button" class="ssn-mini" id="sm-bulk-go">이대로 등록</button></div>`:"";
+      smErr(errs.length?errs.slice(0,5).map(escH).join("<br>")+(errs.length>5?`<br>외 ${errs.length-5}줄`:""):"");
+      document.getElementById("sm-bulk-go")?.addEventListener("click",confirmStoreBulk);
+    }catch(err){ smErr("엑셀을 읽지 못했어요: "+escH(err.message)); }
+  };
+  fr.readAsArrayBuffer(file);
+}
+async function confirmStoreBulk(){
+  const b=document.getElementById("sm-bulk-go"); b.disabled=true; b.textContent="등록 중...";
+  let ok=0;
+  try{ for(const x of smBulk){ if(!x.isNew&&!x.aliases.length) continue; await saveStoreEntry(x.full,x.aliases); ok++; } }
+  catch(e){ smErr("저장 중 오류: "+escH(e.message)); }
+  document.getElementById("sm-bulk").innerHTML=""; smBulk=[];
+  showToast(`✅ 매장 ${ok}곳 저장했어요`);
+}
+
 // ── 배송 이슈 집계 ──
 // 상태: 검토중 → 재발송 예정 → 재발송 완료 / 반려
 // '재발송 예정'으로 바꾸는 순간 재고에서 빼고, 재발송 예정·완료에서 검토중·반려로 되돌리면 다시 채운다.
@@ -2712,7 +2878,7 @@ async function logClaimStock(c,diff,before){
 // (출고요청 승인·반려·상태 변경·취소·매장명 수정, 조회, 쉬핑 리스트·인쇄는 담당자도 가능)
 ["openAddItemModal","confirmAddItem","openItemNameModal","confirmItemName","openQtyModal","confirmQtyModal",
  "handleBatchOrderExcel","confirmBatchOrders","deleteOrder","openPhoto","openAccountModal","openRestockModal","saveRestock",
- "openShipmentRegister","confirmShipmentRegister","toggleShipmentOpen","deleteShipment"].forEach(name=>{
+ "openShipmentRegister","confirmShipmentRegister","toggleShipmentOpen","deleteShipment","openStoreManager"].forEach(name=>{
   const original=window[name];
   if(typeof original!=="function") return;
   window[name]=function(...args){
