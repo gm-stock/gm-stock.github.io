@@ -2392,7 +2392,15 @@ window.viewShipmentStores=()=>{
 // 합계·소계 줄, 수량이 하나도 없는 줄은 건너뛴다.
 const SKIP_HEAD=/^(NO\.?|번호|지역|국가|REGION|COUNTRY|AREA|비고|REMARKS?|NOTE|합계|총계|소계|TOTAL|SUM|매장|매장명|STORE|STORE NAME|SHOP)$/i;
 const SKIP_ROW=/합계|총계|소계|TOTAL|SUBTOTAL|^SUM$/i;
-function storeKey(s){ return String(s||"").toUpperCase().replace(/\s*_\s*[A-Z]+\s*$/,"").replace(/[\s\-_().·]/g,""); }
+// 매장명 비교용 키: 끝의 " _ KR" 같은 국가 표시를 떼고 띄어쓰기·기호를 없앤다.
+// 국가 표시는 매장 목록에 실제로 쓰이는 국가 약자일 때만 뗀다 (TOKYO_GINZA 의 "_GINZA"를 국가로 착각하지 않게).
+function knownCountries(){ const set=new Set(); STORE_LIST.forEach(n=>{ const m=String(n).match(/\s_\s([A-Z]+)\s*$/); if(m) set.add(m[1]); }); return set; }
+function storeKey(s){
+  let v=String(s||"").toUpperCase().trim();
+  const m=v.match(/^(.*?)\s*_\s*([A-Z]+)\s*$/);
+  if(m&&knownCountries().has(m[2])) v=m[1];
+  return v.replace(/[\s\-_().·]/g,"");
+}
 function matchStore(raw){
   const k=storeKey(raw); if(!k) return null;
   return STORE_LIST.find(n=>storeKey(n)===k)||storeAlias[k]||null;
@@ -2586,12 +2594,13 @@ function buildShipStores(){
     else if(!lines[0].skip && lines.some(l=>!l.itemId)) errs.push(`'${h}' 열에 품목을 고르지 않은 줄이 있어요.`);
   });
   if(errs.length) return {errs,stores};
-  const optMiss=new Set(), newMiss=new Set();
+  const optMiss=new Set(), newMiss=new Set(), rawsOf={};
   p.rows.forEach(r=>{
     let name=r.store;
     if(!name){ const m=reg.storeMap[r.raw]; if(!m) return;
       if(m==="__new"){ name=newStoreFull(r.raw); if(!name){ newMiss.add(r.raw); return; } }
       else name=m==="__raw"?r.raw:m; }
+    (rawsOf[name]=rawsOf[name]||new Set()).add(r.raw);
     const acc=stores[name]||(stores[name]={});
     for(const h in r.cells){
       for(const l of (reg.map[h]||[])){
@@ -2608,19 +2617,22 @@ function buildShipStores(){
       }
     }
   });
+  const merged=Object.entries(rawsOf).filter(([n,set])=>set.size>1);
+  const warns=[];
+  if(merged.length) warns.push("확인해 주세요 — 엑셀의 서로 다른 매장 이름이 한 매장으로 합쳐져요 (수량이 더해짐): "+merged.map(([n,set])=>`${[...set].join(" · ")} → ${n}`).join(" / "));
   if(newMiss.size) errs.push("새 매장으로 추가할 매장의 매장명과 국가(영문 약자)를 입력해 주세요: "+[...newMiss].join(", "));
   if(optMiss.size) errs.push("국가별 자동으로 옵션을 고르지 못했어요. 해당 품목의 옵션을 직접 골라주세요: "+[...optMiss].slice(0,5).join(", ")+(optMiss.size>5?` 외 ${optMiss.size-5}건`:""));
   const out={}; for(const n in stores){ const list=Object.values(stores[n]); if(list.length) out[n]=list; }
   if(!Object.keys(out).length && !errs.length) errs.push("등록할 매장이 없어요.");
-  return {errs,stores:out};
+  return {errs,stores:out,warns};
 }
 function regValidate(){
   if(!reg) return;
   const title=document.getElementById("ssn-title")?.value.trim(), open=document.getElementById("ssn-open")?.value;
-  const {errs}=buildShipStores();
+  const {errs,warns=[]}=buildShipStores();
   if(!title) errs.unshift("시즌 이름을 입력해 주세요.");
   if(!open) errs.unshift("오픈일을 골라주세요.");
-  regErr(reg.parsed?errs.map(e=>"· "+escH(e)).join("<br>"):"");
+  regErr(reg.parsed?[...errs.map(e=>"· "+escH(e)),...warns.map(w=>`<span style="color:var(--accent)">· ${escH(w)}</span>`)].join("<br>"):"");
   document.getElementById("ssn-reg-go").disabled=errs.length>0;
 }
 window.confirmShipmentRegister=async()=>{
@@ -2659,7 +2671,7 @@ function applyExtraStores(){
 function storeCountries(){
   const set=new Set(); STORE_LIST.forEach(n=>{ const m=n.match(/_\s*([A-Z]+)\s*$/); if(m) set.add(m[1]); }); return [...set];
 }
-function fullStoreName(name,cc){ return `${String(name).trim().toUpperCase().replace(/\s+/g," ")} _ ${String(cc).trim().toUpperCase()}`; }
+function fullStoreName(name,cc){ return `${String(name).trim().toUpperCase().replace(/_/g," ").replace(/\s+/g," ").trim()} _ ${String(cc).trim().toUpperCase()}`; }
 function storeDocId(full){ return full.replace(/[\/\s]+/g,"_").slice(0,140); }
 function splitAliases(v){ return String(v||"").split(/[,\n]/).map(x=>x.trim()).filter(Boolean); }
 
