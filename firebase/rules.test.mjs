@@ -300,3 +300,47 @@ test("담당자: 매장 계정 명단 보기·추가·삭제 불가", async () =
   await assertFails(setDoc(doc(manager(), "stores", "x.stock@eidosstudio.co.kr"), { name: "x" }));
   await assertFails(deleteDoc(doc(manager(), "stores", "gentlemonster.stock@eidosstudio.co.kr")));
 });
+
+// ── 시즌 배송·배송 이슈 접수 ──
+const SHIP_OPEN = { title: "2026 FW", openDate: "2026-11-05", open: true,
+  stores: { "TOKYO GINZA _ JP": [{ itemId: "i1", itemName: "SET1 PLATE", optName: "", qty: 3 }] } };
+const CLAIM = { shipmentId: "s1", storeName: "TOKYO GINZA _ JP", itemId: "i1", itemName: "SET1 PLATE", optName: "",
+  collection: "MM2", type: "파손", reason: "모서리 깨짐", qty: 1, shipped: 3, photos: ["data:x"], reporter: "店長",
+  status: "검토중", date: "2026-11-06" };
+async function seedShipments() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "shipments", "s1"), SHIP_OPEN);
+    await setDoc(doc(ctx.firestore(), "shipments", "s2"), { ...SHIP_OPEN, open: false });
+  });
+}
+test("시즌 배송: 매장·담당자는 보기만, 등록은 최고관리자만", async () => {
+  await seedShipments();
+  await assertSucceeds(getDoc(doc(store(), "shipments", "s1")));
+  await assertFails(getDoc(doc(anon(), "shipments", "s1")));
+  await assertFails(setDoc(doc(store(), "shipments", "s3"), SHIP_OPEN));
+  await assertFails(setDoc(doc(manager(), "shipments", "s3"), SHIP_OPEN));
+  await assertSucceeds(setDoc(doc(owner(), "shipments", "s3"), SHIP_OPEN));
+});
+test("배송 이슈: 매장은 열린 시즌에 검토중으로만 접수", async () => {
+  await seedShipments();
+  await assertSucceeds(setDoc(doc(store(), "claims", "c1"), { ...CLAIM, createdAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(store(), "claims", "c2"), { ...CLAIM, shipmentId: "s2" }));          // 닫힌 시즌
+  await assertFails(setDoc(doc(store(), "claims", "c3"), { ...CLAIM, shipmentId: "none" }));        // 없는 시즌
+  await assertFails(setDoc(doc(store(), "claims", "c4"), { ...CLAIM, status: "재발송 예정" }));
+  await assertFails(setDoc(doc(store(), "claims", "c5"), { ...CLAIM, qty: 4 }));                     // 배송 수량 초과
+  await assertFails(setDoc(doc(store(), "claims", "c6"), { ...CLAIM, qty: 0 }));
+  await assertFails(setDoc(doc(store(), "claims", "c7"), { ...CLAIM, type: "기타" }));
+  await assertFails(setDoc(doc(store(), "claims", "c8"), { ...CLAIM, photos: ["a", "b", "c", "d"] }));
+  await assertFails(setDoc(doc(store(), "claims", "c9"), { ...CLAIM, extra: 1 }));
+  await assertFails(setDoc(doc(anon(), "claims", "c10"), CLAIM));
+});
+test("배송 이슈: 매장은 접수 후 수정·삭제 불가, 담당자는 상태 변경, 삭제는 최고관리자", async () => {
+  await seedShipments();
+  await assertSucceeds(setDoc(doc(store(), "claims", "c1"), CLAIM));
+  await assertSucceeds(getDoc(doc(store(), "claims", "c1")));
+  await assertFails(setDoc(doc(store(), "claims", "c1"), { ...CLAIM, qty: 2 }));
+  await assertFails(deleteDoc(doc(store(), "claims", "c1")));
+  await assertSucceeds(setDoc(doc(manager(), "claims", "c1"), { ...CLAIM, status: "재발송 예정" }));
+  await assertFails(deleteDoc(doc(manager(), "claims", "c1")));
+  await assertSucceeds(deleteDoc(doc(owner(), "claims", "c1")));
+});
