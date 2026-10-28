@@ -365,6 +365,9 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
 .ssn-sec{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--sub);margin:16px 0 6px}
 .ssn-err{color:var(--low);font-size:12px;line-height:1.6}
 .s-table tr.dim td{opacity:.55}
+.s-table tr.ssn-store-row td{background:var(--bg);border-top:1px solid var(--ink);padding:9px 10px;font-size:13px;color:var(--ink)}
+.s-table tr.ssn-store-row td span{margin-left:10px;font-size:11px;color:var(--sub)}
+.s-table tr.ssn-store-row td em{font-style:normal;font-weight:800;color:var(--accent)}
 .ssn-map{border:1px solid var(--line);background:var(--bg);padding:10px;margin-bottom:8px}
 .ssn-map-h{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:13px;color:var(--ink);margin-bottom:6px}
 .ssn-map-h span{font-weight:400;color:var(--muted);font-size:11px}
@@ -2864,13 +2867,14 @@ function renderClaimsArea(ship){
       <td>${a.파손||"-"}</td><td>${a.불량||"-"}</td><td>${a.누락||"-"}</td><td class="c-qty">${a.total}</td>
       <td class="c-qty ${st!==null&&st<a.total?"lowtxt":""}">${st===null?"-":st}</td></tr>`;
   }).join("");
-  const listRows=rows.map(c=>{
+  // 접수 목록: 매장별로 묶는다 (매장 순서 = 국가별, 기존 매장 목록 순서). 묶음 안은 최근 접수 먼저.
+  const rowOf=c=>{
     const d=c.createdAt?.toDate?c.createdAt.toDate():null;
     const date=d?`${d.getMonth()+1}/${d.getDate()}`:(c.date||"");
     const photos=(c.photos||[]).map((p,i)=>`<img src="${p}" alt="사진 ${i+1}" data-claim="${escAttr(c.id)}" data-pi="${i}" style="width:34px;height:34px;object-fit:cover;cursor:pointer;margin-right:3px;border:1px solid var(--line)">`).join("");
     return `<tr class="${c.status==="반려"||c.status==="재발송 완료"?"dim":""}">
       <td style="white-space:nowrap">${escH(date)}</td>
-      <td class="c-name"><b>${escH(c.storeName)}</b><div class="c-sub">${escH(c.reporter||"")}</div></td>
+      <td class="c-name">${escH(c.reporter||"-")}</td>
       <td class="c-name">${escH(c.itemName)}${c.optName?`<div class="c-sub">${escH(c.optName)}</div>`:""}</td>
       <td><span class="ssn-pill" style="border-color:var(--accent);color:var(--accent)">${escH(c.type)}</span></td>
       <td class="c-qty">${c.qty}<span class="unit"> / ${c.shipped}</span></td>
@@ -2879,14 +2883,25 @@ function renderClaimsArea(ship){
       <td><select class="field-input" style="margin:0;padding:6px 8px;font-size:12px;width:auto" data-claim-status="${escAttr(c.id)}" aria-label="처리 상태">
         ${CLAIM_STATUS.map(s=>`<option ${s===c.status?"selected":""}>${s}</option>`).join("")}</select></td>
     </tr>`;
+  };
+  const byStore={}; rows.forEach(c=>{ (byStore[c.storeName]=byStore[c.storeName]||[]).push(c); });
+  const ccOf=n=>((String(n).match(/_\s*([A-Za-z]+)\s*$/)||[])[1]||"").toUpperCase();
+  const ccOrder=[]; STORE_LIST.forEach(n=>{ const c=ccOf(n); if(c&&!ccOrder.includes(c)) ccOrder.push(c); });
+  const rank=n=>{ const ci=ccOrder.indexOf(ccOf(n)); const si=STORE_LIST.indexOf(n); return [ci<0?1e9:ci, si<0?1e9:si]; };
+  const storeNames=Object.keys(byStore).sort((a,b)=>{ const ra=rank(a), rb=rank(b); return ra[0]-rb[0]||ra[1]-rb[1]||a.localeCompare(b); });
+  const listRows=storeNames.map(n=>{
+    const list=byStore[n], live=list.filter(c=>c.status!=="반려"), pend=list.filter(c=>c.status==="검토중").length;
+    return `<tr class="ssn-store-row"><td colspan="8"><b>${escH(n)}</b>
+      <span>접수 ${list.length}건 · 재요청 ${live.reduce((a,c)=>a+(c.qty||0),0)}개${pend?` · <em>검토 대기 ${pend}</em>`:""}</span></td></tr>`
+      + list.map(rowOf).join("");
   }).join("");
   area.innerHTML=`<div class="adm-kpis">${kpi.map(([l,v,cl])=>`<div class="kpi ${cl}" style="cursor:default"><span class="l">${l}</span><span class="v">${v}</span></div>`).join("")}</div>
     <div class="st-chips">${chips}</div>
     <div class="ssn-sec">품목별 재요청 합계 (재발송 준비용 · 반려 제외)</div>
     ${aggRows?`<div class="s-table-wrap"><table class="s-table" style="min-width:520px"><thead><tr><th>컬렉션</th><th>품목</th><th>파손</th><th>불량</th><th>누락</th><th>합계</th><th>현재 재고</th></tr></thead><tbody>${aggRows}</tbody></table></div>`
       :`<div class="ssn-empty">아직 접수된 배송 이슈가 없어요.</div>`}
-    <div class="ssn-sec">접수 목록 — 상태를 '재발송 예정'으로 바꾸면 재고에서 빠져요</div>
-    ${listRows?`<div class="s-table-wrap"><table class="s-table" style="min-width:820px"><thead><tr><th>접수일</th><th>매장 · 접수자</th><th>품목</th><th>유형</th><th>요청/배송</th><th>사유</th><th>사진</th><th>상태</th></tr></thead><tbody>${listRows}</tbody></table></div>`
+    <div class="ssn-sec">매장별 접수 목록 — 상태를 '재발송 예정'으로 바꾸면 재고에서 빠져요</div>
+    ${listRows?`<div class="s-table-wrap"><table class="s-table" style="min-width:820px"><thead><tr><th>접수일</th><th>접수자</th><th>품목</th><th>유형</th><th>요청/배송</th><th>사유</th><th>사진</th><th>상태</th></tr></thead><tbody>${listRows}</tbody></table></div>`
       :`<div class="ssn-empty">이 조건의 접수 내역이 없어요.</div>`}`;
 }
 window.setClaimType=t=>{ claimTypeFilter=t; renderSeason(); };
