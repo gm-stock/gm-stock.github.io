@@ -2439,7 +2439,7 @@ function saveShipMap(m){ try{ localStorage.setItem("gm-ship-map",JSON.stringify(
 let reg=null; // 등록 창 작업 상태
 
 window.openShipmentRegister=()=>{
-  reg={title:"",openDate:"",parsed:null,map:{},storeMap:{},sheetNames:[],wb:null,sheet:""};
+  reg={title:"",openDate:"",parsed:null,map:{},storeMap:{},newStore:{},sheetNames:[],wb:null,sheet:""};
   const modal=document.createElement("div"); modal.className="modal-bg"; modal.id="ssn-reg-modal";
   modal.innerHTML=`<div class="modal-sheet" style="max-width:620px">
     <div class="modal-handle"></div>
@@ -2461,6 +2461,13 @@ window.openShipmentRegister=()=>{
   modal.querySelector("#ssn-open").addEventListener("input",regValidate);
   document.getElementById("ssn-reg-body").addEventListener("change",regBodyChange);
   document.getElementById("ssn-reg-body").addEventListener("click",regBodyClick);
+  document.getElementById("ssn-reg-body").addEventListener("input",e=>{
+    const t=e.target, f=t.dataset.act; if(f!=="nsname"&&f!=="nscc") return;
+    const raw=Object.keys(reg.storeMap)[+t.dataset.ri], ns=reg.newStore[raw]||(reg.newStore[raw]={name:raw,cc:""});
+    if(f==="nsname") ns.name=t.value; else ns.cc=t.value;
+    const pv=t.closest(".ssn-store").querySelector(".ns-pv"); if(pv) pv.textContent=newStoreFull(raw)||"";
+    regValidate();
+  });
 };
 
 function readShipExcel(file){
@@ -2486,7 +2493,7 @@ function useShipSheet(sn){
   reg.sheet=sn;
   reg.parsed=parseShipSheet(XLSX.utils.sheet_to_json(reg.wb.Sheets[sn],{header:1,defval:""}));
   const saved=loadShipMap();
-  reg.map={}; reg.storeMap={};
+  reg.map={}; reg.storeMap={}; reg.newStore={};
   (reg.parsed?.headers||[]).forEach(h=>{
     if(saved[h]){ reg.map[h]=saved[h].filter(l=>l.skip||items.some(i=>i.id===l.itemId)); if(reg.map[h].length) return; }
     const hit=items.filter(i=>itemKey(i.name)===itemKey(h));
@@ -2496,6 +2503,11 @@ function useShipSheet(sn){
   renderRegBody();
 }
 
+function newStoreFull(raw){
+  const ns=reg?.newStore?.[raw]; if(!ns) return "";
+  const n=String(ns.name||"").trim(), c=String(ns.cc||"").trim();
+  return n&&/^[A-Za-z]+$/.test(c)?fullStoreName(n,c):"";
+}
 function itemOptionsHTML(sel){
   const sorted=[...items].sort((a,b)=>String(a.collection).localeCompare(String(b.collection))||String(a.name).localeCompare(String(b.name)));
   return `<option value="">품목 선택</option>`+sorted.map(i=>`<option value="${escAttr(i.id)}" ${i.id===sel?"selected":""}>${escH(i.collection)} · ${escH(i.name)}</option>`).join("");
@@ -2525,18 +2537,28 @@ function renderRegBody(){
     </div>`;
   }).join("");
   const unknown=Object.keys(reg.storeMap);
-  const storeOpts=sel=>`<option value="">등록 안 함</option><option value="__raw" ${sel==="__raw"?"selected":""}>엑셀 이름 그대로 등록</option>`+STORE_LIST.map(n=>`<option ${n===sel?"selected":""}>${escH(n)}</option>`).join("");
+  const storeOpts=sel=>`<option value="">등록 안 함</option><option value="__new" ${sel==="__new"?"selected":""}>＋ 새 매장으로 추가</option><option value="__raw" ${sel==="__raw"?"selected":""}>엑셀 이름 그대로 등록 (이번만)</option>`+STORE_LIST.map(n=>`<option ${n===sel?"selected":""}>${escH(n)}</option>`).join("");
   body.innerHTML=`${sheetSel}
     <div class="ssn-sec">품목 연결 — 엑셀 머리글을 재고 품목과 맞춰주세요 (세트는 구성품을 모두 연결)</div>${heads}
     <div class="ssn-sec">매장 — 맞춰진 매장 ${p.rows.length-unknown.length}곳${unknown.length?` · 매장 목록에 없는 이름 ${unknown.length}개`:""}</div>
-    ${unknown.length?unknown.map((raw,ri)=>`<div class="ssn-store"><span>${escH(raw)}</span><select data-act="store" data-ri="${ri}">${storeOpts(reg.storeMap[raw])}</select></div>`).join(""):`<div style="font-size:12px;color:var(--muted)">엑셀의 매장이 모두 매장 목록과 맞춰졌어요.</div>`}
+    ${unknown.length?`<div style="font-size:11.5px;color:var(--muted);margin-bottom:4px">기존 매장을 고르거나 새 매장으로 추가하면, 이 엑셀 이름을 기억해서 다음 시즌부터 자동으로 맞춰요.</div>`+unknown.map((raw,ri)=>{
+      const ns=reg.newStore[raw]||{name:raw,cc:""};
+      return `<div class="ssn-store"><span>${escH(raw)}</span><select data-act="store" data-ri="${ri}">${storeOpts(reg.storeMap[raw])}</select>
+      ${reg.storeMap[raw]==="__new"?`<div class="ssn-line" style="flex-basis:100%;margin:4px 0 0">
+        <input data-act="nsname" data-ri="${ri}" value="${escAttr(ns.name)}" placeholder="매장명" style="flex:2 1 160px" aria-label="새 매장명">
+        <input data-act="nscc" data-ri="${ri}" value="${escAttr(ns.cc)}" placeholder="국가" list="ns-cc-list" style="width:80px" aria-label="국가">
+        <span class="ns-pv" style="font-size:11px;color:var(--sub)">${escH(newStoreFull(raw)||"")}</span></div>`:""}</div>`;
+    }).join("")+`<datalist id="ns-cc-list">${storeCountries().map(c=>`<option value="${escAttr(c)}">`).join("")}</datalist>`:`<div style="font-size:12px;color:var(--muted)">엑셀의 매장이 모두 매장 목록과 맞춰졌어요.</div>`}
     <div style="font-size:11.5px;color:var(--muted);line-height:1.7;margin:12px 0 4px">· 등록은 배송 기록만 남기고 <b style="color:var(--sub)">재고 수량은 바꾸지 않아요</b>.<br>· 연결은 이 브라우저에 기억돼서 다음 시즌에도 같은 머리글이면 자동으로 채워져요.</div>`;
   regValidate();
 }
 function regBodyChange(e){
   const t=e.target, act=t.dataset.act; if(!act) return;
   if(act==="sheet"){ useShipSheet(t.value); return; }
-  if(act==="store"){ reg.storeMap[Object.keys(reg.storeMap)[+t.dataset.ri]]=t.value; regValidate(); return; }
+  if(act==="store"){ const raw=Object.keys(reg.storeMap)[+t.dataset.ri]; reg.storeMap[raw]=t.value;
+    if(t.value==="__new"&&!reg.newStore[raw]) reg.newStore[raw]={name:raw.replace(/\(.*?\)/g,"").trim(),cc:""};
+    renderRegBody(); return; }
+  if(act==="nsname"||act==="nscc") return;
   const h=reg.parsed.headers[+t.closest("[data-h]").dataset.h], l=reg.map[h][+t.dataset.li];
   if(act==="item"){ const it=items.find(i=>i.id===t.value); l.itemId=t.value; l.opt=it?.options?.length?"__auto":""; renderRegBody(); return; }
   if(act==="opt") l.opt=t.value;
@@ -2564,10 +2586,12 @@ function buildShipStores(){
     else if(!lines[0].skip && lines.some(l=>!l.itemId)) errs.push(`'${h}' 열에 품목을 고르지 않은 줄이 있어요.`);
   });
   if(errs.length) return {errs,stores};
-  const optMiss=new Set();
+  const optMiss=new Set(), newMiss=new Set();
   p.rows.forEach(r=>{
     let name=r.store;
-    if(!name){ const m=reg.storeMap[r.raw]; if(!m) return; name=m==="__raw"?r.raw:m; }
+    if(!name){ const m=reg.storeMap[r.raw]; if(!m) return;
+      if(m==="__new"){ name=newStoreFull(r.raw); if(!name){ newMiss.add(r.raw); return; } }
+      else name=m==="__raw"?r.raw:m; }
     const acc=stores[name]||(stores[name]={});
     for(const h in r.cells){
       for(const l of (reg.map[h]||[])){
@@ -2584,6 +2608,7 @@ function buildShipStores(){
       }
     }
   });
+  if(newMiss.size) errs.push("새 매장으로 추가할 매장의 매장명과 국가(영문 약자)를 입력해 주세요: "+[...newMiss].join(", "));
   if(optMiss.size) errs.push("국가별 자동으로 옵션을 고르지 못했어요. 해당 품목의 옵션을 직접 골라주세요: "+[...optMiss].slice(0,5).join(", ")+(optMiss.size>5?` 외 ${optMiss.size-5}건`:""));
   const out={}; for(const n in stores){ const list=Object.values(stores[n]); if(list.length) out[n]=list; }
   if(!Object.keys(out).length && !errs.length) errs.push("등록할 매장이 없어요.");
@@ -2605,6 +2630,12 @@ window.confirmShipmentRegister=async()=>{
   const btn=document.getElementById("ssn-reg-go"); btn.disabled=true; btn.textContent="등록 중...";
   try{
     const saved=loadShipMap(); reg.parsed.headers.forEach(h=>{ saved[h]=reg.map[h]; }); saveShipMap(saved);
+    // 목록에 없던 매장: 새 매장 추가 / 기존 매장으로 고른 이름은 '엑셀에서 쓰는 이름'으로 기억
+    for(const raw in reg.storeMap){
+      const m=reg.storeMap[raw];
+      if(m==="__new") await saveStoreEntry(newStoreFull(raw),[raw]);
+      else if(m&&m!=="__raw") await saveStoreEntry(m,[raw]);
+    }
     const ref=await addDoc(collection(db,"shipments"),{title,openDate,open:true,stores,createdAt:serverTimestamp(),createdBy:auth.currentUser?.email||""});
     curShipId=ref.id;
     document.getElementById("ssn-reg-modal")?.remove();
