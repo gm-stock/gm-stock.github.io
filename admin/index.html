@@ -687,12 +687,23 @@ onAuthStateChanged(auth,async user=>{
     return;
   }
   let isAdmin=false;
-  try{
-    const snap=await getDoc(doc(db,"admins",(user.email||"").toLowerCase()));
-    isAdmin=snap.exists();
-    // role: "owner"=최고관리자(전체 기능). 그 외(비어 있음·오타 포함)는 안전하게 담당자(manager)로 본다.
-    if(isAdmin) userRole=(snap.data()?.role==="owner")?"owner":"manager";
-  }catch(err){ console.error(err); }
+  for(;;){
+    try{
+      const snap=await getDoc(doc(db,"admins",(user.email||"").toLowerCase()));
+      isAdmin=snap.exists();
+      // role: "owner"=최고관리자(전체 기능). 그 외(비어 있음·오타 포함)는 안전하게 담당자(manager)로 본다.
+      if(isAdmin) userRole=(snap.data()?.role==="owner")?"owner":"manager";
+      break;
+    }catch(err){
+      console.error(err);
+      if(err?.code==="permission-denied") break; // 권한 없음: 관리자 아님으로 처리
+      // 인터넷이 잠깐 끊긴 경우 등: 로그아웃하지 않고 '연결 중' 화면에서 3초 뒤 다시 확인
+      loginScreen.style.display="none";
+      document.getElementById("loading").style.display="flex";
+      await new Promise(r=>setTimeout(r,3000));
+      if(auth.currentUser!==user) return; // 그 사이 로그아웃·계정 변경됨
+    }
+  }
   document.documentElement.classList.toggle("role-manager",userRole!=="owner");
   if(!isAdmin){
     pendingLoginMsg="관리자로 등록되지 않은 계정이에요. 관리자에게 등록을 요청해 주세요.";
