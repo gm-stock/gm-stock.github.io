@@ -924,13 +924,22 @@ onAuthStateChanged(auth,async user=>{
   }
   const email=(user.email||"").toLowerCase();
   let allowed=false;
-  try{
-    const [st,ad]=await Promise.all([
-      getDoc(doc(db,"stores",email)).catch(()=>null),
-      getDoc(doc(db,"admins",email)).catch(()=>null)
-    ]);
+  for(;;){
+    let netErr=false;
+    const check=ref=>getDoc(ref).catch(err=>{
+      console.error(err);
+      if(err?.code!=="permission-denied") netErr=true; // 권한 없음은 명단에 없음으로 처리
+      return null;
+    });
+    const [st,ad]=await Promise.all([check(doc(db,"stores",email)),check(doc(db,"admins",email))]);
     allowed=!!((st&&st.exists())||(ad&&ad.exists()));
-  }catch(err){ console.error(err); }
+    if(allowed||!netErr) break;
+    // 인터넷이 잠깐 끊긴 경우 등: 로그아웃하지 않고 '연결 중' 화면에서 3초 뒤 다시 확인
+    loginScreen.style.display="none";
+    document.getElementById("loading").style.display="flex";
+    await new Promise(r=>setTimeout(r,3000));
+    if(auth.currentUser!==user) return; // 그 사이 로그아웃·계정 변경됨
+  }
   if(!allowed){
     pendingLoginErr="login_err_notstore";
     await signOut(auth);
