@@ -1125,10 +1125,11 @@ function getSelectedHandler(){
 }
 
 // 관리자: 승인 모달
-window.openApproveModal=orderId=>{
+// mode: "승인" 또는 "출고완료" — 메뉴에서 고른 상태대로 처리한다 (지금 상태로 판단하지 않음)
+window.openApproveModal=(orderId,mode)=>{
   const order=orders.find(o=>o.id===orderId);if(!order)return;
   const modal=document.createElement("div");modal.className="modal-bg";modal.id="approve-modal";
-  const isApproveOnly = order.status==="검토중"||order.status==="반려";
+  const isApproveOnly = mode!=="출고완료";
   modal.innerHTML=`<div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">${isApproveOnly?"✅ 승인 처리":"✅ 출고완료 처리"}</div>
@@ -1137,7 +1138,7 @@ window.openApproveModal=orderId=>{
       ${order.items.map(it=>`<div style="font-size:12px;color:var(--muted)">${it.collection} - ${it.itemName}${it.optName?" ["+it.optName+"]":""} <strong style="color:var(--ink)">${it.qty}${it.unit}</strong></div>`).join("")}
     </div>
     ${handlerSelectHTML()}
-    <button style="width:100%;padding:13px;border-radius:0;background:linear-gradient(135deg,var(--ok),var(--ok));color:#fff;font-weight:700;font-size:15px;margin-top:6px;border:none;cursor:pointer" onclick="window.confirmApprove('${orderId}')">✅ 승인·출고 확정</button>
+    <button style="width:100%;padding:13px;border-radius:0;background:linear-gradient(135deg,var(--ok),var(--ok));color:#fff;font-weight:700;font-size:15px;margin-top:6px;border:none;cursor:pointer" onclick="window.confirmApprove('${orderId}','${isApproveOnly?"승인":"출고완료"}')">${isApproveOnly?"✅ 승인 확정":"✅ 출고완료 확정"}</button>
     <button class="btn-secondary-sm modal-close-btn">취소</button>
   </div>`;
   modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
@@ -1447,11 +1448,11 @@ window.setStatus=async(orderId,newStatus)=>{
   }catch(e){showToast("오류: "+e.message,"var(--low)");}
 };
 
-window.confirmApprove=async(orderId)=>{
+window.confirmApprove=async(orderId,mode)=>{
   const handler=getSelectedHandler();
   if(!handler){showToast("담당자를 선택해주세요","var(--low)");return;}
   const order=orders.find(o=>o.id===orderId);if(!order)return;
-  const isApproveOnly = order.status==="검토중"||order.status==="반려";
+  const isApproveOnly = mode!=="출고완료";
   const newStatus = isApproveOnly?"승인":"출고완료";
   // 반려·취소 건을 되살리는 경우 재고를 다시 차감한다
   // (그 상태에서는 이미 복원돼 있으므로)
@@ -2056,7 +2057,8 @@ function renderOrderCard(order){
     steps.forEach(step=>{
       const sst=STATUS_STYLE[step]||{};
       let action="";
-      if(step==="승인") action="window.openApproveModal('"+order.id+"')";
+      if(step==="승인") action="window.openApproveModal('"+order.id+"','승인')";
+      else if(step==="출고완료") action="window.openApproveModal('"+order.id+"','출고완료')";
       else if(step==="반려") action="window.openRejectModal('"+order.id+"')";
       else if(step==="취소") action="window.openCancelModal('"+order.id+"')";
       else action="window.setStatus('"+order.id+"','"+step+"')";
