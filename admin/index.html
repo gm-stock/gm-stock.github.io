@@ -1128,6 +1128,7 @@ function getSelectedHandler(){
 // mode: "승인" 또는 "출고완료" — 메뉴에서 고른 상태대로 처리한다 (지금 상태로 판단하지 않음)
 window.openApproveModal=(orderId,mode)=>{
   const order=orders.find(o=>o.id===orderId);if(!order)return;
+  if(blockStatus(order,mode==="출고완료"?"출고완료":"승인")) return;
   const modal=document.createElement("div");modal.className="modal-bg";modal.id="approve-modal";
   const isApproveOnly = mode!=="출고완료";
   modal.innerHTML=`<div class="modal-sheet">
@@ -1144,6 +1145,17 @@ window.openApproveModal=(orderId,mode)=>{
   modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
 };
+
+// 담당자(manager) 계정은 '검토중' 주문을 승인·반려하는 것만 가능. 최고관리자는 제한 없음
+function canChangeStatus(order,newStatus){
+  if(userRole==="owner") return true;
+  return (order.status||"검토중")==="검토중" && (newStatus==="승인"||newStatus==="반려");
+}
+function blockStatus(order,newStatus){
+  if(canChangeStatus(order,newStatus)) return false;
+  showToast("담당자 계정은 검토중인 요청의 승인·반려만 할 수 있어요","var(--low)");
+  return true;
+}
 
 // 단순 상태 변경 (담당자 불필요)
 // 재고에서 빠져 있는 상태 (발주 시 차감된 채로 유지되는 상태)
@@ -1434,6 +1446,7 @@ window.confirmBatchOrders = async () => {
 
 window.setStatus=async(orderId,newStatus)=>{
   const order=orders.find(o=>o.id===orderId);if(!order)return;
+  if(blockStatus(order,newStatus)) return;
   const wasHeld = STOCK_HELD.includes(order.status);   // 지금 재고에서 빠져 있나
   const willHold = STOCK_HELD.includes(newStatus);     // 바꾼 뒤에도 빠져 있어야 하나
   let note="";
@@ -1452,6 +1465,7 @@ window.confirmApprove=async(orderId,mode)=>{
   const handler=getSelectedHandler();
   if(!handler){showToast("담당자를 선택해주세요","var(--low)");return;}
   const order=orders.find(o=>o.id===orderId);if(!order)return;
+  if(blockStatus(order,mode==="출고완료"?"출고완료":"승인")) return;
   const isApproveOnly = mode!=="출고완료";
   const newStatus = isApproveOnly?"승인":"출고완료";
   // 반려·취소 건을 되살리는 경우 재고를 다시 차감한다
@@ -1472,6 +1486,7 @@ window.confirmApprove=async(orderId,mode)=>{
 // 관리자: 반려 모달
 window.openRejectModal=orderId=>{
   const order=orders.find(o=>o.id===orderId);if(!order)return;
+  if(blockStatus(order,"반려")) return;
   const modal=document.createElement("div");modal.className="modal-bg";modal.id="reject-modal";
   modal.innerHTML=`<div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -1498,6 +1513,7 @@ window.confirmReject=async(orderId)=>{
   if(!handler){showToast("담당자를 선택해주세요","var(--low)");return;}
   if(!reason){showToast("반려 사유를 입력해주세요","var(--low)");return;}
   const order=orders.find(o=>o.id===orderId);if(!order)return;
+  if(blockStatus(order,"반려")) return;
   // 재고에서 빠져 있던 상태라면 되돌린다 (중복 복원 방지)
   if(STOCK_HELD.includes(order.status)) await adjustStock(order,+1);
   try{
@@ -1578,6 +1594,7 @@ window.confirmStoreNameEdit=async()=>{
 
 window.openCancelModal=orderId=>{
   const order=orders.find(o=>o.id===orderId);if(!order)return;
+  if(blockStatus(order,"취소")) return;
   const modal=document.createElement("div");modal.className="modal-bg";modal.id="cancel-modal";
   modal.innerHTML=`<div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -1601,6 +1618,7 @@ window.confirmCancel=async(orderId)=>{
   const reason=document.getElementById("cancel-reason")?.value.trim();
   if(!reason){showToast("취소 사유를 입력해주세요","var(--low)");return;}
   const order=orders.find(o=>o.id===orderId);if(!order)return;
+  if(blockStatus(order,"취소")) return;
   // 재고에서 빠져 있던 상태라면 되돌린다 (반려·취소 건은 이미 복원돼 있으므로 건너뜀)
   if(STOCK_HELD.includes(order.status)) await adjustStock(order,+1);
   try{
@@ -2044,7 +2062,8 @@ function renderOrderCard(order){
   const isCanceled=s==="취소";
   // 어떤 상태에서든 다른 모든 상태로 바꿀 수 있다
   const ALL_STATUS=["검토중","승인","준비중","출고대기","출고완료","반려","취소"];
-  const steps=ALL_STATUS.filter(x=>x!==s);
+  // 담당자 계정은 허용된 변경(검토중 → 승인·반려)만 메뉴에 보인다
+  const steps=ALL_STATUS.filter(x=>x!==s&&canChangeStatus(order,x));
   const canPrint=["승인","준비중","출고대기","출고완료"].includes(s);
   // 해외 매장(매장명에 _ KR 이 없는 건)만 쉬핑 리스트 대상
   const isOverseas = !String(order.storeName||"").toUpperCase().includes("_ KR");
@@ -2069,7 +2088,7 @@ function renderOrderCard(order){
   }
 
   const statusBtn="<div style=\"position:relative;display:inline-block;flex-shrink:0\">"
-    +"<button id=\"status-btn-"+order.id+"\" class=\"status-toggle-btn\" data-oid=\""+order.id+"\" style=\"display:flex;align-items:center;gap:5px;padding:5px 10px 5px 12px;border-radius:0;font-size:11px;font-weight:700;cursor:pointer;border:1px solid "+st.border+";background:"+st.bg+";color:"+st.color+";white-space:nowrap\">"+st.icon+" "+s+"<span style=\"font-size:9px;opacity:.7;margin-left:2px\">▼</span></button>"
+    +"<button id=\"status-btn-"+order.id+"\" class=\"status-toggle-btn\" data-oid=\""+order.id+"\" style=\"display:flex;align-items:center;gap:5px;padding:5px 10px 5px 12px;border-radius:0;font-size:11px;font-weight:700;cursor:pointer;border:1px solid "+st.border+";background:"+st.bg+";color:"+st.color+";white-space:nowrap\">"+st.icon+" "+s+(steps.length?"<span style=\"font-size:9px;opacity:.7;margin-left:2px\">▼</span>":"")+"</button>"
     +ddHtml
     +(isCanceled?"<button class=\"delete-order-btn\" data-oid=\""+order.id+"\" style=\"margin-left:4px;padding:4px 8px;border-radius:0;font-size:11px;background:transparent;border:1px solid var(--low);color:var(--low);cursor:pointer\">🗑️</button>":"")
     +"</div>";
