@@ -355,3 +355,15 @@ test("추가 매장 목록: 매장·담당자는 보기만, 추가·수정·삭�
   await assertFails(deleteDoc(doc(manager(), "storeNames", "n1")));
   await assertSucceeds(deleteDoc(doc(owner(), "storeNames", "n1")));
 });
+
+test("마스터 시트 사본: 관리자만 보기, 앱에서는 아무도 쓰지 못함", async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "masterSheets", "f1"), { title: "2026 TEST", grid: "[]", unsent: "{}" });
+  });
+  await assertSucceeds(getDoc(doc(owner(), "masterSheets", "f1")));
+  await assertSucceeds(getDocs(collection(manager(), "masterSheets")));
+  await assertFails(getDoc(doc(store(), "masterSheets", "f1")));
+  await assertFails(getDoc(doc(anon(), "masterSheets", "f1")));
+  await assertFails(setDoc(doc(owner(), "masterSheets", "f2"), { title: "x" }));
+  await assertFails(setDoc(doc(store(), "masterSheets", "f2"), { title: "x" }));
+});
