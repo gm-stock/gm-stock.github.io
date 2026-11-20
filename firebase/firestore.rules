@@ -90,6 +90,13 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // ── 출고 마스터 시트 사본 (Apps Script가 5분마다 '출고 마스터' 폴더의 마스터 시트를 읽어 올림) ──
+    // 관리자 '새 시즌 등록'에서 컬렉션 이름을 누르면 이 내용으로 채운다. 쓰기는 Apps Script(소유자 인증)만.
+    match /masterSheets/{fileId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ── 추가 매장 목록 + 엑셀에서 쓰는 이름(별칭) ──
     // 코드의 기본 매장 목록(STORE_LIST)에 더해, 관리자 화면 '매장 목록 관리'에서 추가한 매장.
     // 문서: name("매장명 _ 국가"), aliases(엑셀에서 쓰는 다른 이름 목록)

@@ -364,6 +364,11 @@ body.dark .item-img.tinted{background:color-mix(in srgb,var(--dot) 16%,var(--sur
 .ssn-empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7;border:1px dashed var(--line)}
 .ssn-sec{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--sub);margin:16px 0 6px}
 .ssn-err{color:var(--low);font-size:12px;line-height:1.6}
+.ms-pick{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
+.ms-pick button{padding:7px 11px;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-align:left}
+.ms-pick button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.ms-pick small{display:block;font-weight:400;font-size:10.5px;opacity:.75;margin-top:2px}
+.ms-or{font-size:11px;color:var(--muted);margin:10px 0 2px}
 .s-table tr.dim td{opacity:.55}
 .s-table tr.ssn-store-row td{background:var(--bg);border-top:1px solid var(--ink);padding:9px 10px;font-size:13px;color:var(--ink)}
 .s-table tr.ssn-store-row td span{margin-left:10px;font-size:11px;color:var(--sub)}
@@ -624,6 +629,11 @@ function startData(){
     extraStores=snap.docs.map(d=>({...d.data(),id:d.id})).filter(x=>x.name);
     applyExtraStores(); renderStoreMgrList();
   },err=>console.error("추가 매장 목록을 불러오지 못했어요",err)));
+  // 출고 마스터 시트 사본 (Apps Script가 5분마다 올림) — 새 시즌 등록에서 컬렉션 이름으로 고른다
+  dataUnsubs.push(onSnapshot(collection(db,"masterSheets"),snap=>{
+    masterSheets=snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderMasterPick();
+  },err=>console.error("마스터 시트 목록을 불러오지 못했어요",err)));
   // 발주자 전체 이름 (관리자만 읽을 수 있음)
   dataUnsubs.push(onSnapshot(collection(db,"orderContacts"),snap=>{
     ordererNames={}; snap.docs.forEach(d=>{ ordererNames[d.id]=(d.data()||{}).name||""; });
@@ -2362,6 +2372,16 @@ function shipDeadline(openDate){
   const d=new Date(openDate+"T23:59:59+09:00"); d.setDate(d.getDate()+CLAIM_DAYS); return d;
 }
 function fmtMD(d){ const k=new Date(d.getTime()+9*3600e3); return `${k.getUTCMonth()+1}/${k.getUTCDate()}`; }
+// 마스터 시트 '미발송 현황'에서 이 매장·품목의 아직 안 보낸 수량 (마스터 시트로 등록한 시즌만, 아니면 null)
+function unsentOf(ship,store,itemId,optName){
+  if(!ship?.unsent) return null;
+  const line=(ship.stores?.[store]||[]).find(l=>l.itemId===itemId&&(l.optName||"")===(optName||""));
+  if(!line?.src) return null;
+  let u={}; try{ u=JSON.parse(ship.unsent)||{}; }catch(e){ return null; }
+  const raws=ship.rawNames?.[store]||[store];
+  let n=0; raws.forEach(raw=>line.src.forEach(x=>{ n+=(Number(u[raw]?.[x.col])||0)*(x.mul||1); }));
+  return Math.min(n,line.qty||n);
+}
 
 function renderSeason(){
   const sel=document.getElementById("ssn-select"); if(!sel) return;
@@ -2385,6 +2405,7 @@ function renderSeason(){
     <span>오픈일 <b>${escH(ship.openDate)}</b></span>
     <span>접수 기한 <b>${fmtMD(dl)} 밤 12시</b></span>
     <span>매장 <b>${storeNames.length}</b>곳 · 총 <b>${total.toLocaleString()}</b>개</span>
+    ${ship.master?`<span>마스터 시트 <b>${ship.master.url?`<a href="${escAttr(ship.master.url)}" target="_blank" rel="noopener" style="color:inherit">${escH(ship.master.name)}</a>`:escH(ship.master.name)}</b> 연결 · 미발송 <b>${unsentTotal(ship).toLocaleString()}</b>개${ship.unsentAt?.toDate?` <span style="color:var(--muted)">(${fmtMD(ship.unsentAt.toDate())} ${String(ship.unsentAt.toDate().getHours()).padStart(2,"0")}:${String(ship.unsentAt.toDate().getMinutes()).padStart(2,"0")} 기준)</span>`:""}</span>`:""}
     <div class="ssn-acts owner-only">
       <button type="button" onclick="window.toggleShipmentOpen()">${ship.open?"접수 닫기":"접수 열기"}</button>
       <button type="button" onclick="window.viewShipmentStores()">매장별 내역</button>
@@ -2392,6 +2413,10 @@ function renderSeason(){
     </div>
   </div>`;
   if(typeof renderClaimsArea==="function") renderClaimsArea(ship);
+}
+function unsentTotal(ship){
+  let n=0; Object.keys(ship.stores||{}).forEach(st=>(ship.stores[st]||[]).forEach(l=>{ n+=unsentOf(ship,st,l.itemId,l.optName)||0; }));
+  return n;
 }
 window.selectShipment=id=>{ curShipId=id; renderSeason(); };
 
@@ -2484,11 +2509,16 @@ function saveShipMap(m){ try{ localStorage.setItem("gm-ship-map",JSON.stringify(
 let reg=null; // 등록 창 작업 상태
 
 window.openShipmentRegister=()=>{
-  reg={title:"",openDate:"",parsed:null,map:{},storeMap:{},newStore:{},sheetNames:[],wb:null,sheet:""};
+  reg={title:"",openDate:"",parsed:null,map:{},storeMap:{},newStore:{},sheetNames:[],wb:null,sheet:"",master:null};
   const modal=document.createElement("div"); modal.className="modal-bg"; modal.id="ssn-reg-modal";
   modal.innerHTML=`<div class="modal-sheet" style="max-width:620px">
     <div class="modal-handle"></div>
     <div class="modal-title">🚚 새 시즌 배송 등록</div>
+    <div class="field-wrap"><div class="field-label">출고 마스터 시트에서 가져오기 — 컬렉션 이름을 누르거나 입력하세요</div>
+      <input id="ssn-ms-input" class="field-input" list="ssn-ms-list" placeholder="예: 2026 INTELLIGENT COLLECTION" autocomplete="off">
+      <datalist id="ssn-ms-list"></datalist>
+      <div class="ms-pick" id="ssn-ms-pick"></div>
+      <div class="ms-or">또는 아래에 엑셀 파일을 직접 올려도 돼요.</div></div>
     <div class="field-wrap"><div class="field-label">시즌 이름 *</div>
       <input id="ssn-title" class="field-input" placeholder="예: 2026 FW" autocomplete="off"></div>
     <div class="field-wrap"><div class="field-label">매장 오픈일 * (접수 기한 = 오픈일 + ${CLAIM_DAYS}일)</div>
@@ -2501,7 +2531,15 @@ window.openShipmentRegister=()=>{
     <button class="btn-secondary-sm" onclick="document.getElementById('ssn-reg-modal').remove()">취소</button>
   </div>`;
   document.body.appendChild(modal);
-  document.getElementById("ssn-file").addEventListener("change",e=>readShipExcel(e.target.files[0]));
+  document.getElementById("ssn-file").addEventListener("change",e=>{ reg.master=null; renderMasterPick(); readShipExcel(e.target.files[0]); });
+  document.getElementById("ssn-ms-input").addEventListener("change",e=>{
+    const v=String(e.target.value||"").trim().toUpperCase(); if(!v) return;
+    const m=masterSheets.find(x=>String(x.title||"").trim().toUpperCase()===v)
+      ||masterSheets.find(x=>String(x.title||"").toUpperCase().includes(v)||String(x.fileName||"").toUpperCase().includes(v));
+    if(m) useMaster(m.id); else regErr("'"+escH(e.target.value)+"' 마스터 시트를 찾지 못했어요. '출고 마스터' 폴더의 파일 이름이 \"마스터 시트 _ 컬렉션명\"인지 확인해 주세요. (새로 만든 시트는 최대 5분 뒤에 보여요)");
+  });
+  document.getElementById("ssn-ms-pick").addEventListener("click",e=>{ const b=e.target.closest("button[data-ms]"); if(b) useMaster(b.dataset.ms); });
+  renderMasterPick();
   modal.querySelector("#ssn-title").addEventListener("input",regValidate);
   modal.querySelector("#ssn-open").addEventListener("input",regValidate);
   document.getElementById("ssn-reg-body").addEventListener("change",regBodyChange);
@@ -2536,7 +2574,36 @@ function readShipExcel(file){
 }
 function useShipSheet(sn){
   reg.sheet=sn;
-  reg.parsed=parseShipSheet(XLSX.utils.sheet_to_json(reg.wb.Sheets[sn],{header:1,defval:""}));
+  useParsed(parseShipSheet(XLSX.utils.sheet_to_json(reg.wb.Sheets[sn],{header:1,defval:""})));
+}
+// 마스터 시트 목록 (최근 갱신 순)
+let masterSheets=[];
+function msTime(m){ return m.updatedAt?.toMillis?m.updatedAt.toMillis():0; }
+function msAgo(m){ const t=msTime(m); if(!t) return ""; const min=Math.round((Date.now()-t)/60000);
+  return min<1?"방금 갱신":min<60?`${min}분 전 갱신`:min<1440?`${Math.round(min/60)}시간 전 갱신`:`${Math.round(min/1440)}일 전 갱신`; }
+function renderMasterPick(){
+  const box=document.getElementById("ssn-ms-pick"), dl=document.getElementById("ssn-ms-list");
+  if(!box) return;
+  const list=[...masterSheets].sort((a,b)=>msTime(b)-msTime(a));
+  if(dl) dl.innerHTML=list.map(m=>`<option value="${escAttr(m.title||"")}">`).join("");
+  box.innerHTML=list.length?list.map(m=>`<button type="button" data-ms="${escAttr(m.id)}" aria-pressed="${reg?.master?.fileId===m.id}">${escH(m.title||m.fileName||"(이름 없음)")}<small>오픈 ${escH(m.openDate||"-")} · ${escH(msAgo(m))}</small></button>`).join("")
+    :`<span style="font-size:11.5px;color:var(--muted)">아직 연결된 마스터 시트가 없어요. (Apps Script 'master_sheet_sync' 설정 후 5분 안에 나타나요)</span>`;
+}
+function useMaster(id){
+  const m=masterSheets.find(x=>x.id===id); if(!m||!reg) return;
+  let grid=[]; try{ grid=JSON.parse(m.grid||"[]"); }catch(e){ grid=[]; }
+  reg.master={fileId:m.id,name:m.title||m.fileName||"",url:m.url||"",unsent:m.unsent||"{}"};
+  reg.wb=null; reg.sheetNames=[]; reg.sheet="";
+  const f=document.getElementById("ssn-file"); if(f) f.value="";
+  const ti=document.getElementById("ssn-title"), od=document.getElementById("ssn-open");
+  if(ti) ti.value=m.title||"";
+  if(od&&/^\d{4}-\d{2}-\d{2}$/.test(m.openDate||"")) od.value=m.openDate;
+  const inp=document.getElementById("ssn-ms-input"); if(inp) inp.value=m.title||"";
+  renderMasterPick();
+  useParsed(parseShipSheet(grid));
+}
+function useParsed(parsed){
+  reg.parsed=parsed;
   const saved=loadShipMap();
   reg.map={}; reg.storeMap={}; reg.newStore={};
   (reg.parsed?.headers||[]).forEach(h=>{
@@ -2566,7 +2633,7 @@ function renderRegBody(){
     const lines=reg.map[h]||[];
     const skip=lines.length===1&&lines[0].skip;
     return `<div class="ssn-map" data-h="${hi}">
-      <div class="ssn-map-h">${escH(h)}<span>엑셀 합계 ${qtyOf(h)}개</span></div>
+      <div class="ssn-map-h">${escH(h)}<span>${reg.master?"시트":"엑셀"} 합계 ${qtyOf(h)}개</span></div>
       ${skip?`<div class="ssn-line" style="color:var(--muted);font-size:12px">이 열은 등록하지 않아요 <button type="button" class="ssn-mini" data-act="unskip">되돌리기</button></div>`:
       lines.map((l,li)=>{
         const it=items.find(i=>i.id===l.itemId);
@@ -2651,6 +2718,8 @@ function buildShipStores(){
         const k=it.id+"|"+opt;
         acc[k]=acc[k]||{itemId:it.id,itemName:it.name,optName:opt,collection:it.collection||"",qty:0};
         acc[k].qty+=r.cells[h]*(l.mul||1);
+        // 마스터 시트에서 가져온 경우: 어느 품목 열에서 왔는지 기억 (미발송 수량 연결용)
+        if(reg.master){ const src=acc[k].src||(acc[k].src=[]); if(!src.some(x=>x.col===h)) src.push({col:h,mul:l.mul||1}); }
       }
     }
   });
@@ -2661,7 +2730,8 @@ function buildShipStores(){
   if(optMiss.size) errs.push("국가별 자동으로 옵션을 고르지 못했어요. 해당 품목의 옵션을 직접 골라주세요: "+[...optMiss].slice(0,5).join(", ")+(optMiss.size>5?` 외 ${optMiss.size-5}건`:""));
   const out={}; for(const n in stores){ const list=Object.values(stores[n]); if(list.length) out[n]=list; }
   if(!Object.keys(out).length && !errs.length) errs.push("등록할 매장이 없어요.");
-  return {errs,stores:out,warns};
+  const rawNames={}; for(const n in out) rawNames[n]=[...(rawsOf[n]||[])];
+  return {errs,stores:out,warns,rawNames};
 }
 function regValidate(){
   if(!reg) return;
@@ -2674,7 +2744,7 @@ function regValidate(){
 }
 window.confirmShipmentRegister=async()=>{
   const title=document.getElementById("ssn-title").value.trim(), openDate=document.getElementById("ssn-open").value;
-  const {errs,stores}=buildShipStores();
+  const {errs,stores,rawNames}=buildShipStores();
   if(errs.length||!title||!openDate){ regValidate(); return; }
   const btn=document.getElementById("ssn-reg-go"); btn.disabled=true; btn.textContent="등록 중...";
   try{
@@ -2685,7 +2755,13 @@ window.confirmShipmentRegister=async()=>{
       if(m==="__new") await saveStoreEntry(newStoreFull(raw),[raw]);
       else if(m&&m!=="__raw") await saveStoreEntry(m,[raw]);
     }
-    const ref=await addDoc(collection(db,"shipments"),{title,openDate,open:true,stores,createdAt:serverTimestamp(),createdBy:auth.currentUser?.email||""});
+    const data={title,openDate,open:true,stores,createdAt:serverTimestamp(),createdBy:auth.currentUser?.email||""};
+    // 마스터 시트에서 가져온 시즌: 연결 정보 + 매장의 시트 이름 + 지금 미발송 수량 (이후 Apps Script가 5분마다 갱신)
+    if(reg.master){
+      data.master={fileId:reg.master.fileId,name:reg.master.name,url:reg.master.url};
+      data.rawNames=rawNames; data.unsent=reg.master.unsent||"{}";
+    }
+    const ref=await addDoc(collection(db,"shipments"),data);
     curShipId=ref.id;
     document.getElementById("ssn-reg-modal")?.remove();
     showToast(`✅ ${title} 등록 완료 · 매장 ${Object.keys(stores).length}곳, 접수가 열렸어요`);
@@ -2909,7 +2985,7 @@ function renderClaimsArea(ship){
       <td class="c-name">${escH(c.reporter||"-")}</td>
       <td class="c-name">${escH(c.itemName)}${c.optName?`<div class="c-sub">${escH(c.optName)}</div>`:""}</td>
       <td><span class="ssn-pill" style="border-color:var(--accent);color:var(--accent)">${escH(c.type)}</span></td>
-      <td class="c-qty">${c.qty}<span class="unit"> / ${c.shipped}</span></td>
+      <td class="c-qty">${c.qty}<span class="unit"> / ${c.shipped}</span>${(()=>{ const u=unsentOf(ship,c.storeName,c.itemId,c.optName); return u>0?`<div class="c-sub" style="color:var(--accent);font-weight:700;white-space:nowrap">발송 전 ${u}개</div>`:""; })()}</td>
       <td style="min-width:180px;white-space:normal;font-size:12px">${escH(c.reason)}</td>
       <td style="white-space:nowrap">${photos||'<span class="c-sub">-</span>'}</td>
       <td><select class="field-input" style="margin:0;padding:6px 8px;font-size:12px;width:auto" data-claim-status="${escAttr(c.id)}" aria-label="처리 상태">
