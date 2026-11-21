@@ -43,6 +43,9 @@ function ss_syncSeasonSheetsInner_() {
   // 시즌 배송(매장별 발송 수량)은 출고 마스터 시트의 '발송 기록'에서 관리하므로 여기서는 쓰지 않는다 (2026-11-21~)
 
   // ── 배송 이슈 ──
+  // 프로그램에서 삭제한 시즌(테스트 등)의 접수 건은 기록하지 않는다 (시즌을 지워도 접수 문서는 남아 있음)
+  const liveClaims = claims.filter(c => shipById[c.shipmentId]);
+  claims.length = 0; Array.prototype.push.apply(claims, liveClaims);
   claims.sort((a, b) => ss_time_(b.createdAt) - ss_time_(a.createdAt));
   const claimRows = claims.map(c => [
     ss_fmt_(c.createdAt) || c.date || '',
