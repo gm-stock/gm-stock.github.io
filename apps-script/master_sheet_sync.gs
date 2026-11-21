@@ -116,7 +116,7 @@ function ms_readMaster_(file) {
   const cols = [];
   for (let c = 7; c < 22; c++) { const h = String(head[c] || '').trim(); if (h) cols.push({ c: c, h: h }); }
   const grid = [['매장'].concat(cols.map(x => x.h))];
-  // 6행부터: 국가(B열)가 있는 줄 = 매장 (소계·합계·빈 줄은 국가가 비어 있음)
+  // 6행부터: 국가(B열)가 있는 줄 = 매장 (6행 사이즈 줄·소계·합계·빈 줄은 국가가 비어 있어 건너뜀)
   for (let r = 5; r < values.length; r++) {
     const store = String(values[r][0] || '').trim();
     const cc = String(values[r][1] || '').trim();
