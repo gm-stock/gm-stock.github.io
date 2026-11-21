@@ -35,10 +35,17 @@ function ss_syncSeasonSheetsInner_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ships = ss_list_('shipments', null);
   // 사진(용량이 큼)은 빼고 필요한 칸만 받는다
-  const claims = ss_list_('claims', ['shipmentId', 'storeName', 'itemName', 'optName', 'collection', 'type', 'reason',
-    'qty', 'shipped', 'reporter', 'status', 'date', 'createdAt', 'handledAt', 'handler']);
+  const claims = ss_list_('claims', ['shipmentId', 'storeName', 'itemId', 'itemName', 'optName', 'collection', 'type', 'reason',
+    'qty', 'shipped', 'reporter', 'status', 'date', 'createdAt', 'handledAt', 'handler', 'plannedAt', 'resentAt']);
   const shipById = {};
   ships.forEach(s => { shipById[s.id] = s; });
+
+  // 시즌·매장·품목별 배송 이슈 모으기 (시즌 배송 탭에 접수·재발송 내용을 붙이기 위해)
+  const claimsByLine = {};
+  claims.forEach(c => {
+    const k = [c.shipmentId, c.storeName, c.itemId || c.itemName, c.optName || ''].join('|');
+    (claimsByLine[k] = claimsByLine[k] || []).push(c);
+  });
 
   // ── 시즌 배송 ──
   const shipRows = [];
@@ -47,24 +54,33 @@ function ss_syncSeasonSheetsInner_() {
     const deadline = ss_deadline_(s.openDate);
     Object.keys(s.stores || {}).sort().forEach(store => {
       (s.stores[store] || []).forEach(it => {
+        const cs = (claimsByLine[[s.id, store, it.itemId || it.itemName, it.optName || ''].join('|')] || [])
+          .slice().sort((a, b) => ss_time_(a.createdAt) - ss_time_(b.createdAt));
+        const j = f => cs.map(f).join('\n');
         shipRows.push([s.title || '', s.openDate || '', deadline, s.open ? '접수 중' : '접수 닫힘',
-          store, it.collection || '', it.itemName || '', it.optName || '', Number(it.qty) || 0]);
+          store, it.collection || '', it.itemName || '', it.optName || '', Number(it.qty) || 0,
+          j(c => (c.type || '') + ' ' + (Number(c.qty) || 0) + '개'),
+          j(c => ss_fmt_(c.createdAt) || c.date || ''),
+          j(c => c.status || ''),
+          j(c => ss_resent_(c))]);
       });
     });
   });
   ss_write_(ss, SS_TAB_SHIP,
-    ['시즌', '오픈일', '접수 기한', '접수 상태', '매장', '컬렉션', '품목', '옵션', '배송 수량'], shipRows);
+    ['시즌', '오픈일', '접수 기한', '접수 상태', '매장', '컬렉션', '품목', '옵션', '배송 수량',
+     '배송 이슈 접수', '이슈 접수일', '처리 상태', '재발송 완료일'], shipRows);
 
   // ── 배송 이슈 ──
   claims.sort((a, b) => ss_time_(b.createdAt) - ss_time_(a.createdAt));
   const claimRows = claims.map(c => [
-    c.createdAt instanceof Date ? Utilities.formatDate(c.createdAt, 'Asia/Seoul', 'yyyy-MM-dd HH:mm') : (c.date || ''),
+    ss_fmt_(c.createdAt) || c.date || '',
     (shipById[c.shipmentId] || {}).title || '', c.storeName || '', c.collection || '', c.itemName || '', c.optName || '',
     c.type || '', Number(c.qty) || 0, Number(c.shipped) || 0, c.reason || '', c.reporter || '', c.status || '',
-    c.handledAt ? Utilities.formatDate(new Date(c.handledAt), 'Asia/Seoul', 'yyyy-MM-dd HH:mm') : '', c.handler || ''
+    ss_planned_(c), ss_resent_(c), ss_fmt_(c.handledAt), c.handler || ''
   ]);
   const claimChanged = ss_write_(ss, SS_TAB_CLAIM,
-    ['접수일시', '시즌', '매장', '컬렉션', '품목', '옵션', '유형', '재요청 수량', '배송 수량', '사유', '접수자', '처리 상태', '처리일시', '처리자'],
+    ['접수일시', '시즌', '매장', '컬렉션', '품목', '옵션', '유형', '재요청 수량', '배송 수량', '사유', '접수자', '처리 상태',
+     '재발송 예정일', '재발송 완료일', '최근 처리일시', '처리자'],
     claimRows);
   // 처리 상태 색 (검토중 주황 / 재발송 예정·완료 초록 / 반려 빨강)
   const sh = ss.getSheetByName(SS_TAB_CLAIM);
@@ -108,9 +124,26 @@ function ss_deadline_(openDate) {
   if (!openDate) return '';
   const d = new Date(openDate + 'T00:00:00+09:00');
   d.setDate(d.getDate() + SS_CLAIM_DAYS);
-  return Utilities.formatDate(d, 'Asia/Seoul', 'yyyy-MM-dd') + ' 24:00';
+  // '24:00'을 붙이면 시트가 시간으로 잘못 읽어 깨져 보여서 글자로 적는다
+  return Utilities.formatDate(d, 'Asia/Seoul', 'yyyy-MM-dd') + ' 자정까지';
 }
 function ss_time_(v) { return v instanceof Date ? v.getTime() : 0; }
+// 날짜 칸 표시 (Firestore 시각 또는 ISO 글자) → 'yyyy-MM-dd HH:mm'
+function ss_fmt_(v) {
+  if (!v) return '';
+  const d = v instanceof Date ? v : new Date(v);
+  return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
+}
+// 재발송 완료일: 새로 저장되는 resentAt, 예전 기록은 완료 상태로 바꾼 마지막 처리일시
+function ss_resent_(c) {
+  if (c.status !== '재발송 완료') return '';
+  return ss_fmt_(c.resentAt) || ss_fmt_(c.handledAt);
+}
+// 재발송 예정일: 새로 저장되는 plannedAt, 예전 기록은 예정 상태일 때의 처리일시
+function ss_planned_(c) {
+  if (c.status !== '재발송 예정' && c.status !== '재발송 완료') return '';
+  return ss_fmt_(c.plannedAt) || (c.status === '재발송 예정' ? ss_fmt_(c.handledAt) : '');
+}
 
 // Firestore 컬렉션 전체 읽기 (fields: 받을 칸 목록, null이면 전부)
 function ss_list_(col, fields) {

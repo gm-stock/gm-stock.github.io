@@ -3039,7 +3039,13 @@ async function setClaimStatus(id,newStatus,sel){
       const st=stockOf(c.itemId,c.optName);
       await adjustStock(line,+1); note=" 재고를 되돌렸어요."; logClaimStock(c,+c.qty,st);
     }
-    await setDoc(doc(db,"claims",id),{status:newStatus,handledAt:new Date().toISOString(),handler:auth.currentUser?.email||""},{merge:true});
+    const nowIso=new Date().toISOString();
+    // 재발송 예정일·완료일을 따로 남긴다 (구글 시트 '배송 이슈'·'시즌 배송' 탭에 표시)
+    const dates={
+      plannedAt: newStatus==="재발송 예정" ? nowIso : (newStatus==="재발송 완료" ? (c.plannedAt||null) : null),
+      resentAt: newStatus==="재발송 완료" ? nowIso : null
+    };
+    await setDoc(doc(db,"claims",id),{status:newStatus,handledAt:nowIso,handler:auth.currentUser?.email||"",...dates},{merge:true});
     showToast(`🔄 ${c.storeName} · ${c.itemName} → ${newStatus}.${note}`);
   }catch(err){ sel.value=c.status; showToast("오류: "+err.message,"var(--low)"); }
 }
