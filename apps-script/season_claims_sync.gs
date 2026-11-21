@@ -59,8 +59,8 @@ function ss_syncSeasonSheetsInner_() {
         const j = f => cs.map(f).join('\n');
         shipRows.push([s.title || '', s.openDate || '', deadline, s.open ? '접수 중' : '접수 닫힘',
           store, it.collection || '', it.itemName || '', it.optName || '', Number(it.qty) || 0,
-          j(c => (c.type || '') + ' ' + (Number(c.qty) || 0) + '개'),
-          j(c => ss_fmt_(c.createdAt) || c.date || ''),
+          // 예: "누락 2개 · 2026-10-28 18:34 접수"
+          j(c => (c.type || '') + ' ' + (Number(c.qty) || 0) + '개 · ' + (ss_fmt_(c.createdAt) || c.date || '') + ' 접수'),
           j(c => c.status || ''),
           j(c => ss_resent_(c))]);
       });
@@ -68,7 +68,7 @@ function ss_syncSeasonSheetsInner_() {
   });
   ss_write_(ss, SS_TAB_SHIP,
     ['시즌', '오픈일', '접수 기한', '접수 상태', '매장', '컬렉션', '품목', '옵션', '배송 수량',
-     '배송 이슈 접수', '이슈 접수일', '처리 상태', '재발송 완료일'], shipRows);
+     '배송 이슈 접수 (유형·수량·접수일)', '처리 상태', '재발송 완료일'], shipRows);
 
   // ── 배송 이슈 ──
   claims.sort((a, b) => ss_time_(b.createdAt) - ss_time_(a.createdAt));
