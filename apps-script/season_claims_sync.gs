@@ -2,8 +2,8 @@
  * 시즌 배송 · 배송 이슈 → 구글 시트 기록 (출고 내역 시트에 붙이는 추가 파일)
  *
  * 하는 일
- *  - 5분마다 Firestore의 shipments(시즌 배송), claims(배송 이슈 접수)를 읽어
- *    이 스프레드시트의 '시즌 배송', '배송 이슈' 탭을 통째로 다시 씁니다. (읽기 전용 기록용)
+ *  - 5분마다 Firestore의 claims(배송 이슈 접수)를 읽어 이 스프레드시트의 '배송 이슈' 탭을 통째로 다시 씁니다.
+ *    (시즌 이름은 shipments에서 가져옴. 매장별 시즌 발송 수량은 출고 마스터 시트에서 관리 — 2026-11-21부터 '시즌 배송' 탭은 쓰지 않음)
  *  - 기존 출고 내역 동기화(apps_script_v4.gs)와는 함수 이름이 겹치지 않게 모두 ss_ 로 시작합니다.
  *
  * 처음 한 번만
@@ -40,35 +40,7 @@ function ss_syncSeasonSheetsInner_() {
   const shipById = {};
   ships.forEach(s => { shipById[s.id] = s; });
 
-  // 시즌·매장·품목별 배송 이슈 모으기 (시즌 배송 탭에 접수·재발송 내용을 붙이기 위해)
-  const claimsByLine = {};
-  claims.forEach(c => {
-    const k = [c.shipmentId, c.storeName, c.itemId || c.itemName, c.optName || ''].join('|');
-    (claimsByLine[k] = claimsByLine[k] || []).push(c);
-  });
-
-  // ── 시즌 배송 ──
-  const shipRows = [];
-  ships.sort((a, b) => String(b.openDate || '').localeCompare(String(a.openDate || '')));
-  ships.forEach(s => {
-    const deadline = ss_deadline_(s.openDate);
-    Object.keys(s.stores || {}).sort().forEach(store => {
-      (s.stores[store] || []).forEach(it => {
-        const cs = (claimsByLine[[s.id, store, it.itemId || it.itemName, it.optName || ''].join('|')] || [])
-          .slice().sort((a, b) => ss_time_(a.createdAt) - ss_time_(b.createdAt));
-        const j = f => cs.map(f).join('\n');
-        shipRows.push([s.title || '', s.openDate || '', deadline, s.open ? '접수 중' : '접수 닫힘',
-          store, it.collection || '', it.itemName || '', it.optName || '', Number(it.qty) || 0,
-          // 예: "누락 2개 · 2026-10-28 18:34 접수"
-          j(c => (c.type || '') + ' ' + (Number(c.qty) || 0) + '개 · ' + (ss_fmt_(c.createdAt) || c.date || '') + ' 접수'),
-          j(c => c.status || ''),
-          j(c => ss_resent_(c))]);
-      });
-    });
-  });
-  ss_write_(ss, SS_TAB_SHIP,
-    ['시즌', '오픈일', '접수 기한', '접수 상태', '매장', '컬렉션', '품목', '옵션', '배송 수량',
-     '배송 이슈 접수 (유형·수량·접수일)', '처리 상태', '재발송 완료일'], shipRows);
+  // 시즌 배송(매장별 발송 수량)은 출고 마스터 시트의 '발송 기록'에서 관리하므로 여기서는 쓰지 않는다 (2026-11-21~)
 
   // ── 배송 이슈 ──
   claims.sort((a, b) => ss_time_(b.createdAt) - ss_time_(a.createdAt));
