@@ -775,14 +775,18 @@ function renderStock(){
   const low=items.filter(isLow);
   const years=[...new Set(items.map(i=>String(i.year||"")).filter(Boolean))].sort().reverse();
   const byYear=filterYear==="전체"?items:items.filter(i=>String(i.year||"")==filterYear);
-  const collMinOrder={};
-  byYear.forEach(i=>{
+  // 컬렉션 순서: 새로 등록된 컬렉션일수록 탭 왼쪽·목록 위 (2026-11-23)
+  // 품목 ID(item_등록시각13자리)로 컬렉션이 처음 생긴 때를 구한다. 시각이 없는 옛 품목은 0(가장 오래됨).
+  // 같으면(옛 컬렉션끼리) 예전처럼 _order 순서.
+  const collBorn={}, collMinOrd={};
+  items.forEach(i=>{
     const c=i.collection; if(!c)return;
-    const o=i._order??9999;
-    if(collMinOrder[c]===undefined||o<collMinOrder[c]) collMinOrder[c]=o;
+    const m=/^item_(\d{13})/.exec(i.id||""); const ts=m?+m[1]:0;
+    collBorn[c]=collBorn[c]===undefined?ts:Math.min(collBorn[c],ts);
+    const o=i._order??9999; collMinOrd[c]=collMinOrd[c]===undefined?o:Math.min(collMinOrd[c],o);
   });
-  const colls=[...new Set(byYear.map(i=>i.collection).filter(Boolean))]
-    .sort((a,b)=>(collMinOrder[a]??9999)-(collMinOrder[b]??9999));
+  const collRank=(a,b)=>(collBorn[b]||0)-(collBorn[a]||0)||(collMinOrd[a]??9999)-(collMinOrd[b]??9999);
+  const colls=[...new Set(byYear.map(i=>i.collection).filter(Boolean))].sort(collRank);
   const ac=colls.includes(filterColl)?filterColl:"전체";
 
   document.getElementById("stock-stats").innerHTML=[
@@ -821,12 +825,13 @@ function renderStock(){
     document.getElementById("stock-groups").innerHTML=`<div style="text-align:center;padding:50px;font-size:14px;color:var(--muted)">데이터를 불러오는 중...</div>`;return;
   }
 
-  // 그룹별 최소 _order 기준 정렬 (프로그램 = 시트 동일 순서)
-  const groupMinOrder={};
+  // 그룹 순서도 컬렉션 순서(새 컬렉션 먼저)를 따른다
+  const groupMinOrder={}, groupColl={};
   Object.entries(grouped).forEach(([k,gitems])=>{
     groupMinOrder[k]=Math.min(...gitems.map(i=>i._order??9999));
+    groupColl[k]=gitems[0].collection||"";
   });
-  const sortedKeys=Object.keys(grouped).sort((a,b)=>groupMinOrder[a]-groupMinOrder[b]);
+  const sortedKeys=Object.keys(grouped).sort((a,b)=>collRank(groupColl[a],groupColl[b])||groupMinOrder[a]-groupMinOrder[b]);
   document.getElementById("stock-groups").innerHTML=sortedKeys.map(gk=>{const gitems=grouped[gk];{
     const isCol=collapsedGroups.has(gk);
     const gTotal=gitems.reduce((a,i)=>a+totalQty(i),0);
