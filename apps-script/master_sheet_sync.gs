@@ -282,6 +282,8 @@ function mo_realign_(ss) {
   }
   if (idChanged) info.getRange(MO_FIRST, idCol, n, 1).setValues(ids.map(x => [x]));
 
+  try { mo_fitHeads_(ss, qty, info); } catch (err) { console.error('품목명 칸 맞춤 실패: ' + err); }
+
   const save = () => props.setProperty(key, JSON.stringify({ ids: ids, names: names }));
   if (!sIds) { save(); return; } // 처음: 지금 상태를 기준으로 기억
   if (sIds.join('|') === ids.join('|')) {
@@ -333,6 +335,75 @@ function mo_realign_(ss) {
   save();
   mo_log_(ss, stored.names, names);
   try { ss.toast('품목 순서가 바뀌어 매장 수량도 같은 품목 열로 옮겼어요.', '최종 수량', 6); } catch (err) {}
+}
+
+/* '최종 수량' 5행(품목명)·6행(사이즈)이 칸보다 길어 잘리지 않게 자동 맞춤 (2026-11-24)
+ *  - 열 너비: 가장 긴 '끊을 수 없는 단어'(예: (GOOGLE,SAMSUNG))가 한 줄에 들어가게 넓힘 (90~150px)
+ *  - 행 높이: 줄바꿈된 줄 수에 맞춰 5·6행 높이를 늘림 (줄어들 땐 원래 최소 높이 60·30px까지만)
+ *  - 품목명·사이즈가 바뀌었을 때만 실행 (스크립트 속성 mo_heads_파일ID 로 비교)
+ */
+const MO_COL_MIN = 90, MO_COL_MAX = 150, MO_H5_MIN = 60, MO_H6_MIN = 30;
+
+// 글자 폭 대략 계산(px): 대문자·굵게는 넓게, 숫자·소문자는 보통, 공백·기호는 좁게, 한글은 1칸
+function mo_textPx_(t, pt, bold) {
+  const em = pt * 96 / 72;
+  let w = 0;
+  for (const ch of String(t)) {
+    if (/[\u3131-\uD79D]/.test(ch)) w += em * 1.0;
+    else if (/[A-Z]/.test(ch)) w += em * (bold ? 0.74 : 0.68);
+    else if (/[a-z0-9]/.test(ch)) w += em * (bold ? 0.6 : 0.56);
+    else if (ch === ' ') w += em * 0.3;
+    else w += em * 0.4;
+  }
+  return w;
+}
+
+function mo_fitHeads_(ss, qty, info) {
+  const rng = qty.getRange(5, MO_QTY_COL, 2, MO_SLOTS);
+  const vals = rng.getDisplayValues();
+  const sig = JSON.stringify(vals);
+  const props = PropertiesService.getScriptProperties();
+  const key = 'mo_heads_' + ss.getId();
+  if (props.getProperty(key) === sig) return;
+
+  const sizes = rng.getFontSizes(), weights = rng.getFontWeights();
+  const PAD = 14;
+  let lines5 = 1, lines6 = 1;
+  for (let j = 0; j < MO_SLOTS; j++) {
+    // 1) 열 너비: 끊을 수 없는 가장 긴 단어 기준
+    let longest = 0;
+    for (let r = 0; r < 2; r++) {
+      String(vals[r][j]).split(/[\s\n]+/).forEach(word => {
+        longest = Math.max(longest, mo_textPx_(word, sizes[r][j] || 10, weights[r][j] === 'bold'));
+      });
+    }
+    const want = Math.min(Math.max(Math.ceil(longest + PAD), MO_COL_MIN), MO_COL_MAX);
+    const col = MO_QTY_COL + j;
+    if (qty.getColumnWidth(col) < want) qty.setColumnWidth(col, want);
+    const usable = qty.getColumnWidth(col) - PAD;
+    // 2) 이 너비에서 몇 줄로 접히는지
+    for (let r = 0; r < 2; r++) {
+      const pt = sizes[r][j] || 10, bold = weights[r][j] === 'bold';
+      let n = 0;
+      String(vals[r][j]).split('\n').forEach(seg => {
+        let cur = 0, cnt = 1;
+        seg.split(' ').forEach((word, wi) => {
+          const w = mo_textPx_((wi ? ' ' : '') + word, pt, bold);
+          if (cur && cur + w > usable) { cnt++; cur = mo_textPx_(word, pt, bold); }
+          else cur += w;
+          while (cur > usable) { cnt++; cur -= usable; } // 너무 긴 단어는 글자 단위로 접힘
+        });
+        n += cnt;
+      });
+      if (r === 0) lines5 = Math.max(lines5, n); else lines6 = Math.max(lines6, n);
+    }
+  }
+  const lineH = pt => Math.ceil(pt * 96 / 72 * 1.35);
+  const pt5 = Math.max.apply(null, sizes[0].map(x => x || 10));
+  const pt6 = Math.max.apply(null, sizes[1].map(x => x || 9));
+  qty.setRowHeight(5, Math.max(MO_H5_MIN, lines5 * lineH(pt5) + 12));
+  qty.setRowHeight(6, Math.max(MO_H6_MIN, lines6 * lineH(pt6) + 10));
+  props.setProperty(key, sig);
 }
 
 function mo_backup_(ss, rows) {
