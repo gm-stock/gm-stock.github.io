@@ -367,22 +367,23 @@ function mo_fitHeads_(ss, qty, info) {
   if (props.getProperty(key) === sig) return;
 
   const sizes = rng.getFontSizes(), weights = rng.getFontWeights();
-  const PAD = 14;
+  // 칸 안쪽 여백. 6행은 '모아보기' 필터 줄이라 칸 오른쪽에 필터 단추(약 22px)가 있어 그만큼 더 뺀다
+  const PADS = [14, 36];
   let lines5 = 1, lines6 = 1;
   for (let j = 0; j < MO_SLOTS; j++) {
     // 1) 열 너비: 끊을 수 없는 가장 긴 단어 기준
     let longest = 0;
     for (let r = 0; r < 2; r++) {
       String(vals[r][j]).split(/[\s\n]+/).forEach(word => {
-        longest = Math.max(longest, mo_textPx_(word, sizes[r][j] || 10, weights[r][j] === 'bold'));
+        longest = Math.max(longest, mo_textPx_(word, sizes[r][j] || 10, weights[r][j] === 'bold') + PADS[r]);
       });
     }
-    const want = Math.min(Math.max(Math.ceil(longest + PAD), MO_COL_MIN), MO_COL_MAX);
+    const want = Math.min(Math.max(Math.ceil(longest), MO_COL_MIN), MO_COL_MAX);
     const col = MO_QTY_COL + j;
     if (qty.getColumnWidth(col) < want) qty.setColumnWidth(col, want);
-    const usable = qty.getColumnWidth(col) - PAD;
     // 2) 이 너비에서 몇 줄로 접히는지
     for (let r = 0; r < 2; r++) {
+      const usable = qty.getColumnWidth(col) - PADS[r];
       const pt = sizes[r][j] || 10, bold = weights[r][j] === 'bold';
       let n = 0;
       String(vals[r][j]).split('\n').forEach(seg => {
