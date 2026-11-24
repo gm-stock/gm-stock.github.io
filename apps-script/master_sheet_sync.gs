@@ -49,6 +49,7 @@ function ms_syncInner_() {
   const files = ms_masterFiles_();
   const unsentById = {};
   files.forEach(f => {
+    try { mo_check_(f.getId()); } catch (e) { console.error('품목 순서 확인 실패: ' + f.getName() + ' / ' + e); }
     let data;
     try { data = ms_readMaster_(f); }
     catch (e) { console.error('마스터 시트 읽기 실패: ' + f.getName() + ' / ' + e); return; }
@@ -184,4 +185,277 @@ function ms_listShipments_() {
     token = body.nextPageToken || '';
   } while (token);
   return out;
+}
+
+/* =====================================================================
+ * 품목 순서를 바꿔도 수량이 따라가게 (2026-11-23 추가, 함수 이름은 mo_ 로 시작)
+ *
+ *  - '품목 정보' 5~19행 = '최종 수량' H~V열. 4~6행(사진·품목명·사이즈)은 INDEX 수식이라
+ *    품목 정보 줄을 옮겨도 "5번째 줄 → H열" 자리가 그대로다.
+ *  - '품목 정보'의 숨긴 '고유번호(자동)' 열에 품목마다 번호를 붙이고,
+ *    '최종 수량' H~V 각 열이 어느 품목 것인지 기억해 둔다(스크립트 속성 mo_order_파일ID).
+ *  - 품목 줄을 옮기거나 끼워 넣으면 → 매장 줄의 수량 숫자와 칸 색을 그 품목 열로 같이 옮긴다.
+ *    (소계·합계처럼 수식이 있는 줄은 건드리지 않는다)
+ *  - 지운 품목(또는 16번째로 밀려난 품목)에 수량이 있었으면 '지운 품목 수량(백업)' 탭에 남기고
+ *    '변경 이력'에도 한 줄 적는다. 수량을 그냥 버리지 않는다.
+ *  - 실행 시점: 마스터 시트마다 '변경 시' 트리거(5분 동기화가 자동 설치) + 5분 동기화 때 한 번 더 확인.
+ *  - 새 마스터 시트(복사본)는 '복사용' 양식에 이미 고유번호 열과 수식이 있어 따로 할 일 없음.
+ *    옛 양식 파일은 mo_prepareFile('파일ID') 를 한 번 실행하면 준비된다.
+ * ===================================================================== */
+const MO_INFO_SID = 6;   // '품목 정보' 탭 고유 번호
+const MO_QTY_SID = 1;    // '최종 수량'
+const MO_LOG_SID = 5;    // '변경 이력'
+const MO_FIRST = 5;      // 품목 정보 첫 품목 줄
+const MO_SLOTS = 15;     // H~V
+const MO_QTY_COL = 8;    // H
+const MO_QTY_ROW = 7;    // 최종 수량 매장 첫 줄
+const MO_ID_HEAD = '고유번호(자동)';
+const MO_BACKUP = '지운 품목 수량(백업)';
+
+function mo_sheet_(ss, sid) {
+  const shs = ss.getSheets();
+  for (let i = 0; i < shs.length; i++) if (shs[i].getSheetId() === sid) return shs[i];
+  return null;
+}
+
+// '품목 정보' 4행에서 고유번호 열 찾기 (열을 끼워 넣어 위치가 바뀌어도 찾음). 없으면 0
+function mo_idCol_(info) {
+  const head = info.getRange(4, 1, 1, info.getMaxColumns()).getDisplayValues()[0];
+  for (let c = 0; c < head.length; c++) if (String(head[c]).trim() === MO_ID_HEAD) return c + 1;
+  return 0;
+}
+
+function mo_newId_() { return 'i' + Utilities.getUuid().replace(/-/g, '').slice(0, 10); }
+
+/** 마스터 시트 '변경 시' 트리거 */
+function mo_onChange(e) {
+  const ss = e && e.source;
+  if (!ss) return;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return; // 5분 동기화가 다시 확인함
+  try { mo_realign_(ss); } catch (err) { console.error('품목 순서 맞춤 실패: ' + err); }
+  finally { lock.releaseLock(); }
+}
+
+/** 5분 동기화에서 파일마다 호출: 트리거 설치 + 순서 확인 */
+function mo_check_(fileId) {
+  const has = ScriptApp.getProjectTriggers().some(t =>
+    t.getHandlerFunction() === 'mo_onChange' && t.getTriggerSourceId() === fileId);
+  if (!has) ScriptApp.newTrigger('mo_onChange').forSpreadsheet(fileId).onChange().create();
+  mo_realign_(SpreadsheetApp.openById(fileId));
+}
+
+function mo_realign_(ss) {
+  const info = mo_sheet_(ss, MO_INFO_SID), qty = mo_sheet_(ss, MO_QTY_SID);
+  if (!info || !qty) return;
+  const idCol = mo_idCol_(info);
+  if (!idCol) return; // 옛 양식: 아무것도 하지 않음
+  const n = MO_SLOTS;
+  const names = info.getRange(MO_FIRST, 1, n, 1).getDisplayValues().map(r => String(r[0]).trim());
+  const ids = info.getRange(MO_FIRST, idCol, n, 1).getDisplayValues().map(r => String(r[0]).trim());
+
+  const props = PropertiesService.getScriptProperties();
+  const key = 'mo_order_' + ss.getId();
+  let stored = null;
+  try { stored = JSON.parse(props.getProperty(key) || 'null'); } catch (err) { stored = null; }
+  const sIds = (stored && stored.ids && stored.ids.length === n) ? stored.ids : null;
+
+  // 고유번호 붙이기 · 겹친 번호 정리 (줄을 복사해 붙이면 번호가 겹침 → 원래 자리 쪽이 번호를 유지)
+  let idChanged = false;
+  const count = {};
+  ids.forEach(id => { if (id) count[id] = (count[id] || 0) + 1; });
+  const keep = {};
+  for (let i = 0; i < n; i++) {
+    const id = ids[i];
+    if (id && count[id] > 1 && sIds && sIds[i] === id) keep[id] = i;
+  }
+  const seen = {};
+  for (let i = 0; i < n; i++) {
+    let id = ids[i];
+    if (id && count[id] > 1) {
+      const owner = (id in keep) ? keep[id] : -1;
+      if ((owner >= 0 && owner !== i) || (owner < 0 && seen[id])) id = '';
+    }
+    if (!id && names[i]) id = mo_newId_();
+    if (id !== ids[i]) { ids[i] = id; idChanged = true; }
+    if (id) seen[id] = true;
+  }
+  if (idChanged) info.getRange(MO_FIRST, idCol, n, 1).setValues(ids.map(x => [x]));
+
+  try { mo_fitHeads_(ss, qty, info); } catch (err) { console.error('품목명 칸 맞춤 실패: ' + err); }
+
+  const save = () => props.setProperty(key, JSON.stringify({ ids: ids, names: names }));
+  if (!sIds) { save(); return; } // 처음: 지금 상태를 기준으로 기억
+  if (sIds.join('|') === ids.join('|')) {
+    if (stored.names.join('|') !== names.join('|')) save();
+    return;
+  }
+
+  // 새 자리 j 의 수량을 가져올 옛 자리
+  // (새 품목이 원래 빈 자리에 생긴 경우엔 그 자리 열을 그대로 씀 — 이름보다 수량을 먼저 적었어도 지켜짐)
+  const src = ids.map((id, j) => {
+    const i = id ? sIds.indexOf(id) : -1;
+    return i >= 0 ? i : (sIds[j] === '' ? j : -1);
+  });
+  const last = qty.getLastRow();
+  if (last >= MO_QTY_ROW) {
+    const nr = last - MO_QTY_ROW + 1;
+    const rng = qty.getRange(MO_QTY_ROW, MO_QTY_COL, nr, n);
+    const v = rng.getValues(), f = rng.getFormulas(), bg = rng.getBackgrounds();
+    const stores = qty.getRange(MO_QTY_ROW, 1, nr, 1).getDisplayValues();
+    const used = {};
+    src.forEach(i => { if (i >= 0) used[i] = true; });
+
+    // 자리를 잃은 열(지운 품목)에 수량이 있으면 백업
+    const lost = [];
+    for (let i = 0; i < n; i++) {
+      if (used[i]) continue;
+      for (let r = 0; r < nr; r++) {
+        if (f[r][i] || v[r][i] === '' || v[r][i] === null) continue;
+        lost.push([new Date(), ss.getName(), stored.names[i] || '(이름 없음)', stores[r][0], v[r][i]]);
+      }
+    }
+    if (lost.length) mo_backup_(ss, lost);
+
+    const out = [], outBg = [];
+    for (let r = 0; r < nr; r++) {
+      const fRow = f[r].some(x => x);
+      const row = [], rowBg = [];
+      for (let j = 0; j < n; j++) {
+        if (fRow) { row.push(f[r][j] || v[r][j]); rowBg.push(bg[r][j]); continue; }
+        const i = src[j];
+        row.push(i >= 0 ? v[r][i] : '');
+        rowBg.push(i >= 0 ? bg[r][i] : (String(bg[r][j]).toLowerCase() === '#fff3a6' ? '#ffffff' : bg[r][j]));
+      }
+      out.push(row); outBg.push(rowBg);
+    }
+    rng.setValues(out);
+    rng.setBackgrounds(outBg);
+  }
+  save();
+  mo_log_(ss, stored.names, names);
+  try { ss.toast('품목 순서가 바뀌어 매장 수량도 같은 품목 열로 옮겼어요.', '최종 수량', 6); } catch (err) {}
+}
+
+/* '최종 수량' 5행(품목명)·6행(사이즈)이 칸보다 길어 잘리지 않게 자동 맞춤 (2026-11-24)
+ *  - 열 너비: 가장 긴 '끊을 수 없는 단어'(예: (GOOGLE,SAMSUNG))가 한 줄에 들어가게 넓힘 (90~150px)
+ *  - 행 높이: 줄바꿈된 줄 수에 맞춰 5·6행 높이를 늘림 (줄어들 땐 원래 최소 높이 60·30px까지만)
+ *  - 품목명·사이즈가 바뀌었을 때만 실행 (스크립트 속성 mo_heads_파일ID 로 비교)
+ */
+const MO_COL_MIN = 90, MO_COL_MAX = 150, MO_H5_MIN = 60, MO_H6_MIN = 30;
+
+// 글자 폭 대략 계산(px): 대문자·굵게는 넓게, 숫자·소문자는 보통, 공백·기호는 좁게, 한글은 1칸
+function mo_textPx_(t, pt, bold) {
+  const em = pt * 96 / 72;
+  let w = 0;
+  for (const ch of String(t)) {
+    if (/[\u3131-\uD79D]/.test(ch)) w += em * 1.0;
+    else if (/[A-Z]/.test(ch)) w += em * (bold ? 0.74 : 0.68);
+    else if (/[a-z0-9]/.test(ch)) w += em * (bold ? 0.6 : 0.56);
+    else if (ch === ' ') w += em * 0.3;
+    else w += em * 0.4;
+  }
+  return w;
+}
+
+function mo_fitHeads_(ss, qty, info) {
+  const rng = qty.getRange(5, MO_QTY_COL, 2, MO_SLOTS);
+  const vals = rng.getDisplayValues();
+  const sig = JSON.stringify(vals);
+  const props = PropertiesService.getScriptProperties();
+  const key = 'mo_heads_' + ss.getId();
+  if (props.getProperty(key) === sig) return;
+
+  const sizes = rng.getFontSizes(), weights = rng.getFontWeights();
+  // 칸 안쪽 여백. 6행은 '모아보기' 필터 줄이라 칸 오른쪽에 필터 단추(약 22px)가 있어 그만큼 더 뺀다
+  const PADS = [14, 36];
+  let lines5 = 1, lines6 = 1;
+  for (let j = 0; j < MO_SLOTS; j++) {
+    // 1) 열 너비: 끊을 수 없는 가장 긴 단어 기준
+    let longest = 0;
+    for (let r = 0; r < 2; r++) {
+      String(vals[r][j]).split(/[\s\n]+/).forEach(word => {
+        longest = Math.max(longest, mo_textPx_(word, sizes[r][j] || 10, weights[r][j] === 'bold') + PADS[r]);
+      });
+    }
+    const want = Math.min(Math.max(Math.ceil(longest), MO_COL_MIN), MO_COL_MAX);
+    const col = MO_QTY_COL + j;
+    if (qty.getColumnWidth(col) < want) qty.setColumnWidth(col, want);
+    // 2) 이 너비에서 몇 줄로 접히는지
+    for (let r = 0; r < 2; r++) {
+      const usable = qty.getColumnWidth(col) - PADS[r];
+      const pt = sizes[r][j] || 10, bold = weights[r][j] === 'bold';
+      let n = 0;
+      String(vals[r][j]).split('\n').forEach(seg => {
+        let cur = 0, cnt = 1;
+        seg.split(' ').forEach((word, wi) => {
+          const w = mo_textPx_((wi ? ' ' : '') + word, pt, bold);
+          if (cur && cur + w > usable) { cnt++; cur = mo_textPx_(word, pt, bold); }
+          else cur += w;
+          while (cur > usable) { cnt++; cur -= usable; } // 너무 긴 단어는 글자 단위로 접힘
+        });
+        n += cnt;
+      });
+      if (r === 0) lines5 = Math.max(lines5, n); else lines6 = Math.max(lines6, n);
+    }
+  }
+  const lineH = pt => Math.ceil(pt * 96 / 72 * 1.35);
+  const pt5 = Math.max.apply(null, sizes[0].map(x => x || 10));
+  const pt6 = Math.max.apply(null, sizes[1].map(x => x || 9));
+  qty.setRowHeight(5, Math.max(MO_H5_MIN, lines5 * lineH(pt5) + 12));
+  qty.setRowHeight(6, Math.max(MO_H6_MIN, lines6 * lineH(pt6) + 10));
+  props.setProperty(key, sig);
+}
+
+function mo_backup_(ss, rows) {
+  let sh = ss.getSheetByName(MO_BACKUP);
+  if (!sh) {
+    sh = ss.insertSheet(MO_BACKUP);
+    sh.getRange(1, 1, 1, 5).setValues([['백업 시각', '파일', '품목', '매장', '수량']]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, 5).setValues(rows);
+  sh.getRange(2, 1, sh.getLastRow() - 1, 1).setNumberFormat('yyyy-mm-dd hh:mm');
+}
+
+function mo_log_(ss, before, after) {
+  const log = mo_sheet_(ss, MO_LOG_SID);
+  if (!log) return;
+  const fmt = a => a.map(x => String(x || '-').replace(/\n/g, ' ')).join(' / ');
+  log.insertRowsBefore(5, 1);
+  log.getRange(5, 1, 1, 9).setValues([[new Date(), '자동 (품목 순서 맞춤)', '최종 수량', 'H~V', '',
+    '품목 순서 변경 → 수량 열 이동', fmt(before), fmt(after), '매장 수량을 같은 품목 열로 옮김']])
+    .setFontWeight('normal').setBackground(null).setFontColor('#000000');
+  log.getRange(5, 1).setNumberFormat('yyyy-mm-dd hh:mm');
+}
+
+/** 옛 양식 파일 준비: 고유번호 열 추가(숨김) + 최종 수량 4~6행을 자리 고정 수식으로. 한 번만 실행 */
+function mo_prepareFile(fileId) {
+  const ss = SpreadsheetApp.openById(fileId);
+  const info = mo_sheet_(ss, MO_INFO_SID), qty = mo_sheet_(ss, MO_QTY_SID);
+  if (!info || !qty) throw new Error('품목 정보 / 최종 수량 탭을 찾지 못했어요.');
+  // 지금 '최종 수량' 품목명이 '품목 정보' 줄 순서와 같은지 먼저 확인 (다르면 수량이 어긋날 수 있어 멈춤)
+  const want = info.getRange(MO_FIRST, 1, MO_SLOTS, 1).getDisplayValues().map(r => String(r[0]).trim());
+  const have = qty.getRange(5, MO_QTY_COL, 1, MO_SLOTS).getDisplayValues()[0].map(x => String(x).trim());
+  if (want.join('|') !== have.join('|')) throw new Error('최종 수량 품목명이 품목 정보 순서와 달라요: ' + have.join(', '));
+  if (!mo_idCol_(info)) {
+    info.insertColumnAfter(info.getMaxColumns());
+    const c = info.getMaxColumns();
+    info.getRange(4, c).setValue(MO_ID_HEAD);
+    info.hideColumns(c);
+  }
+  const P = "'" + info.getName().replace(/'/g, "''") + "'!";
+  const photo = [], name = [], size = [];
+  for (let r = MO_FIRST; r < MO_FIRST + MO_SLOTS; r++) {
+    const c = 'INDEX(' + P + '$C:$C,' + r + ')';
+    photo.push('=IFERROR(LET(c,' + c + ',t,IFERROR(c&"",""),IF(t="",IF(ISBLANK(' + c + '),"",c),'
+      + 'IF(REGEXMATCH(t,"drive\\.google\\.com"),IMAGE("https://drive.google.com/thumbnail?sz=w400&id="&REGEXEXTRACT(t,"(?:/d/|id=)([\\w-]+)")),'
+      + 'IF(REGEXMATCH(t,"^https?://"),IMAGE(t),c)))),"")');
+    name.push('=IF(INDEX(' + P + '$A:$A,' + r + ')="","",INDEX(' + P + '$A:$A,' + r + '))');
+    size.push('=IF(INDEX(' + P + '$B:$B,' + r + ')="","",INDEX(' + P + '$B:$B,' + r + '))');
+  }
+  qty.getRange(4, MO_QTY_COL, 3, MO_SLOTS).setFormulas([photo, name, size]);
+  SpreadsheetApp.flush();
+  PropertiesService.getScriptProperties().deleteProperty('mo_order_' + fileId);
+  mo_realign_(ss); // 고유번호 붙이고 지금 상태를 기준으로 기억
 }
